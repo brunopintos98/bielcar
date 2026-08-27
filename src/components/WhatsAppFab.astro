@@ -1,0 +1,99 @@
+---
+import Icon from './Icon.astro';
+import { waLink, cleanPath } from '../data/site';
+
+/**
+ * FAB de WhatsApp — §5.9.
+ *
+ * Uno solo. No agregar además un chat widget: dos burbujas flotantes en la
+ * misma pantalla es ruido.
+ *
+ * Mientras no tengamos el número, el FAB no se renderiza como link muerto —
+ * se renderiza como marcador rojo, que es imposible de confundir con algo
+ * funcionando y aparece en todas las páginas hasta que llegue el dato.
+ */
+/**
+ * La línea depende de la página.
+ *
+ * En /service el botón flotante va al WhatsApp del TALLER. Quien está leyendo
+ * esa página y toca el botón verde quiere agendar, no comprar un auto —
+ * mandarlo a ventas obliga a que alguien reenvíe el mensaje a mano y ahí es
+ * donde se pierden consultas. En el resto del sitio va a ventas, que es el
+ * canal general.
+ *
+ * Es el mismo botón haciendo cosas distintas según dónde está, y eso se
+ * sostiene porque el mensaje prellenado también cambia: quien lo recibe ve una
+ * consulta de service o una consulta general, no un texto genérico.
+ */
+const isService = cleanPath(Astro.url.pathname) === '/service';
+
+const href = isService
+  ? waLink('Hola, quiero hacer una consulta por service.', 'service')
+  : waLink('Hola, quiero hacer una consulta.');
+---
+
+{
+  href ? (
+    <a
+      class="fab"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Escríbanos por WhatsApp"
+    >
+      <Icon name="whatsapp" size={28} />
+    </a>
+  ) : (
+    <div class="fab fab--missing" role="note" aria-label="Falta el número de WhatsApp">
+      <Icon name="whatsapp" size={28} />
+      <span class="fab__note">FALTA Nº</span>
+    </div>
+  )
+}
+
+<style>
+  .fab {
+    position: fixed;
+    right: var(--space-6);
+    bottom: var(--space-6);
+    z-index: var(--z-fab);
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-full);
+    background: var(--whatsapp);
+    color: #fff;
+    box-shadow: var(--shadow-fab);
+    transition: background-color var(--dur) var(--ease);
+  }
+
+  .fab:hover {
+    background: var(--whatsapp-hover);
+  }
+
+  .fab--missing {
+    background: #B00020;
+    cursor: not-allowed;
+  }
+
+  .fab__note {
+    position: absolute;
+    bottom: -6px;
+    font-family: var(--font-body);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: #FFE600;
+    color: #1A1A00;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+
+  @media (max-width: 899px) {
+    .fab {
+      right: var(--space-4);
+      bottom: var(--space-4);
+    }
+  }
+</style>

@@ -1,0 +1,238 @@
+---
+import Icon from './Icon.astro';
+import Placeholder from './Placeholder.astro';
+import { CONTACT, type ContactLine } from '../data/site';
+
+/**
+ * La fontanería compartida de los formularios del sitio.
+ *
+ * NO hace POST. Serializa los campos al texto de un mensaje de WhatsApp y abre
+ * `wa.me`. Es la única forma honesta de tener un formulario en un sitio sin
+ * backend: cualquier otra cosa necesita un endpoint que no existe, y un form
+ * que parece enviar y no envía es peor que no tener form.
+ *
+ * ─── Qué comparte y qué no ─────────────────────────────────────────────────
+ * Comparte lo que es idéntico entre /service y /contacto: la grilla, el botón,
+ * el fallback de popup bloqueado y el script. Los CAMPOS no: entran por el
+ * slot, como markup explícito de cada formulario. La diferencia importa —
+ * un componente que recibiera `fields: Field[]` sería un motor de formularios
+ * genérico en un sitio que tiene exactamente dos, y el día que uno necesite un
+ * campo raro habría que ensanchar el motor en vez de escribir un input.
+ *
+ * ─── El mensaje es una plantilla con tokens ────────────────────────────────
+ * `template` lleva `{nombre-del-campo}` y el script los reemplaza con lo que la
+ * persona escribió. Un token sin campo correspondiente queda vacío, no imprime
+ * la llave. Se hace así y no con una función porque la función viviría en el
+ * frontmatter (servidor) y el mensaje se arma en el cliente: no cruzan.
+ *
+ * ─── Por qué el número va en un data-attribute ─────────────────────────────
+ * `waLink()` arma el link en build time, pero acá el mensaje se conoce recién
+ * cuando la persona escribe. Si no hubiera número este componente NO renderiza
+ * el formulario: renderiza el <Placeholder>. Un formulario que junta datos y
+ * después no tiene a dónde mandarlos es una trampa para el visitante.
+ *
+ * ─── Hay DOS líneas de WhatsApp, y elegir mal tiene costo ──────────────────
+ * Ventas y taller atienden en números distintos (ver CONTACT en site.ts). El
+ * prop `line` fija a cuál va este formulario.
+ *
+ * `/contacto` no puede fijarlo: la misma persona puede estar escribiendo por
+ * una permuta o por un service. Para eso están `routeField` y `routeMap` —
+ * el valor de un campo decide la línea en el momento del envío. El mapa se
+ * resuelve a NÚMEROS en el servidor y viaja ya resuelto, así el script del
+ * cliente no necesita conocer CONTACT ni el concepto de "línea".
+ *
+ * ─── El botón no usa la clase `.btn` ───────────────────────────────────────
+ * Button.astro renderiza un <a> y sus estilos están scopeados. Acá hace falta
+ * un <button type="submit"> de verdad. La salida obvia —subir `.btn` a
+ * base.css como primitiva global— es la que no se puede tomar: `.btn` es una
+ * clase de Bootstrap y el plugin de Multiaviso es Bootstrap 3. Una regla
+ * global `.btn` se filtraría dentro del markup del plugin, que es el mismo
+ * error que "nunca un selector suelto como .item-title", en sentido inverso.
+ */
+interface Props {
+  /** Texto del mensaje, con `{campo}` donde va cada valor. */
+  template: string;
+  submitLabel: string;
+  /** Columnas de la grilla de campos. Una sola para formularios angostos. */
+  columns?: 1 | 2;
+  /** A qué línea va. Todo lo que sea taller tiene que pasar 'service'. */
+  line?: ContactLine;
+  /** Campo cuyo valor puede cambiar la línea en el envío. Ver la nota de arriba. */
+  routeField?: string;
+  /** Valor del campo → línea. Lo que no esté acá cae en `line`. */
+  routeMap?: Record<string, ContactLine>;
+}
+
+const {
+  template,
+  submitLabel,
+  columns = 2,
+  line = 'sales',
+  routeField,
+  routeMap,
+} = Astro.props;
+
+const number = CONTACT[line].whatsapp;
+
+/* El mapa viaja resuelto a números, no a nombres de línea: el cliente hace un
+   lookup y nada más. */
+const routeNumbers =
+  routeField && routeMap
+    ? JSON.stringify(
+        Object.fromEntries(
+          Object.entries(routeMap).map(([value, target]) => [value, CONTACT[target].whatsapp])
+        )
+      )
+    : undefined;
+---
+
+{
+  number ? (
+    <form
+      class="waform"
+      data-wa-form
+      data-wa={number}
+      data-template={template}
+      data-wa-route-field={routeField}
+      data-wa-route-map={routeNumbers}
+    >
+      <div class="waform__grid" data-columns={columns}>
+        <slot />
+      </div>
+
+      <button class="waform__submit" type="submit">
+        <Icon name="whatsapp" size={20} />
+        <span>{submitLabel}</span>
+      </button>
+
+      {/* Se revela solo si el navegador bloquea la apertura de la pestaña.
+          Sin esto, la persona completa el formulario, toca el botón y no pasa
+          nada visible. */}
+      <p class="waform__fallback" data-fallback hidden>
+        Si no se abrió WhatsApp, <a data-fallback-link href="#">toque acá</a>.
+      </p>
+    </form>
+  ) : (
+    <div class="waform">
+      <Placeholder what="número de WhatsApp" from="Sebastián" />
+    </div>
+  )
+}
+
+<style>
+  .waform__grid {
+    display: grid;
+    gap: var(--space-8);
+  }
+
+  .waform__grid[data-columns='2'] {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .waform__grid[data-columns='1'] {
+    grid-template-columns: 1fr;
+  }
+
+  /* Ver la nota del frontmatter: esto NO puede llamarse .btn. */
+  .waform__submit {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-12);
+    padding: var(--space-4) var(--space-8);
+    background: var(--whatsapp);
+    color: #fff;
+    border: 1px solid var(--whatsapp);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: var(--fs-button);
+    line-height: var(--lh-button);
+    font-weight: 500;
+    letter-spacing: var(--tracking-button);
+    cursor: pointer;
+    transition:
+      background-color var(--dur) var(--ease),
+      border-color var(--dur) var(--ease);
+  }
+
+  .waform__submit:hover {
+    background: var(--whatsapp-hover);
+    border-color: var(--whatsapp-hover);
+  }
+
+  .waform__fallback {
+    margin-top: var(--space-4);
+    font-size: var(--fs-body-sm);
+    color: var(--field-label, var(--text-on-light-muted));
+  }
+
+  .waform__fallback[hidden] {
+    display: none;
+  }
+
+  .waform__fallback a {
+    color: var(--field-link, var(--brand-deep));
+  }
+
+  @media (max-width: 599px) {
+    .waform__grid[data-columns='2'] {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+
+    .waform__submit {
+      margin-top: var(--space-8);
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+
+<script>
+  /* Serializa el formulario al texto de un mensaje y abre wa.me. Sin POST, sin
+     fetch, sin backend — ver la nota del frontmatter del componente. */
+  const forms = document.querySelectorAll<HTMLFormElement>('[data-wa-form]');
+
+  forms.forEach((form) => {
+    const wa = form.dataset.wa;
+    const template = form.dataset.template;
+    const routeField = form.dataset.waRouteField;
+    const routeMap: Record<string, string> = form.dataset.waRouteMap
+      ? JSON.parse(form.dataset.waRouteMap)
+      : {};
+    const fallback = form.querySelector<HTMLParagraphElement>('[data-fallback]');
+    const fallbackLink = form.querySelector<HTMLAnchorElement>('[data-fallback-link]');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!wa || !template) return;
+
+      const data = new FormData(form);
+
+      /* Un token sin campo correspondiente se reemplaza por vacío en vez de
+         quedar impreso como `{loquesea}` en el mensaje que recibe el vendedor. */
+      const message = template.replace(/\{(\w+)\}/g, (_, key: string) =>
+        String(data.get(key) ?? '').trim()
+      );
+
+      /* La línea por defecto es la del prop `line`; si el formulario declara un
+         campo de ruteo y su valor está en el mapa, gana ese. Un valor que no
+         esté en el mapa cae en el default en vez de romper. */
+      const routed = routeField ? routeMap[String(data.get(routeField) ?? '')] : undefined;
+      const number = routed || wa;
+
+      const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+
+      /* `submit` es un gesto del usuario, así que window.open normalmente pasa
+         el bloqueador. Cuando no pasa devuelve null, y ahí aparece el link
+         manual en vez de dejar a la persona sin saber qué pasó. */
+      const opened = window.open(url, '_blank', 'noopener');
+
+      if (!opened && fallback && fallbackLink) {
+        fallbackLink.href = url;
+        fallback.hidden = false;
+        fallbackLink.focus();
+      }
+    });
+  });
+</script>

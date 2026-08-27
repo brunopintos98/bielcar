@@ -1,0 +1,350 @@
+---
+import Icon from './Icon.astro';
+import Placeholder from './Placeholder.astro';
+import { site, waLink, cleanPath, mapEmbedSrc, CONTACT, LOGO, SALES_EMAIL, SOCIAL } from '../data/site';
+
+/**
+ * Footer — §5.8. Cuatro partes apiladas, todas a ancho completo:
+ *   1. franja de marcas
+ *   2. íconos sociales
+ *   3. split 50/50 datos + mapa a altura completa
+ *   4. barra de copyright
+ *
+ * El mapa a media pantalla y altura completa es el detalle que más carácter le
+ * da al footer de la referencia. Vale copiarlo.
+ */
+/**
+ * ─── La franja de marcas ya no vive en el footer ───────────────────────────
+ * §5.8 la lista como parte 1 del footer. Se sacó por pedido explícito: ahora
+ * aparece SOLO en el Home, debajo del hero (§7).
+ *
+ * Antes había acá una lista de rutas que la mostraban en el cuerpo, para que
+ * el footer no la repitiera. Al quedar en una sola página esa lista no
+ * distinguía nada —el footer no la renderiza en ninguna ruta— así que se fue
+ * junto con la franja, en vez de quedar como una condición que siempre da lo
+ * mismo.
+ *
+ * Si vuelve a más de una página, esto se reconstruye; el componente
+ * `BrandStrip.astro` sigue existiendo intacto y sin tocar.
+ */
+
+/**
+ * Rutas que YA muestran los datos de contacto y el mapa en el cuerpo.
+ *
+ * Solo `/contacto`, y por el mismo motivo: la parte 3 del footer (§5.8) es una
+ * tarjeta de contacto condensada —dirección, horario, teléfonos, WhatsApp,
+ * mail y mapa— y en la página de contacto sería exactamente lo mismo dos veces
+ * en la misma pantalla, con el mismo mapa dos veces. Ahí la página lo muestra
+ * más completo (los dos mails separados, "cómo llegar") y con el mapa más
+ * grande, así que la versión condensada sobra.
+ *
+ * El resto del footer —franja, redes, barra de copyright— se mantiene: eso no
+ * lo repite ninguna página.
+ */
+const OWN_CONTACT_BLOCK = ['/contacto'];
+
+const path = cleanPath(Astro.url.pathname);
+
+const hasOwnContact = OWN_CONTACT_BLOCK.includes(path);
+
+const mapSrc = mapEmbedSrc();
+/**
+ * Las dos líneas, cada una con sus fijos y su WhatsApp.
+ *
+ * Antes era una sola fila de teléfonos y un WhatsApp. Con ventas y taller en
+ * números distintos eso obliga a la persona a adivinar a cuál llamar, y la
+ * mitad de las veces va a elegir mal. Se listan separadas y etiquetadas.
+ *
+ * El celular NO se lista aparte del WhatsApp: es el mismo número, y ponerlo
+ * dos veces sugiere dos canales donde hay uno.
+ */
+const lines = [
+  {
+    ...CONTACT.sales,
+    wa: waLink('Hola, quiero hacer una consulta.', 'sales'),
+  },
+  {
+    ...CONTACT.service,
+    wa: waLink('Hola, quiero hacer una consulta por service.', 'service'),
+  },
+];
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  {/* §5.8, parte 2: fila de íconos sociales centrados, 24px.
+      Los cuatro son glifos que heredan el color con `currentColor` — ningún
+      filtro. El nombre accesible va en el `aria-label` del <a>, porque el
+      <svg> del ícono es `aria-hidden`. */}
+  <div class="footer__social">
+    {
+      SOCIAL && SOCIAL.length > 0 ? (
+        <ul class="footer__social-list">
+          {SOCIAL.map((s) => (
+            <li>
+              <a
+                class="footer__social-link"
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={s.label}
+              >
+                <Icon name={s.icon} size={s.size ?? 24} />
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <Placeholder what="redes sociales" from="Sebastián" />
+      )
+    }
+  </div>
+
+  {!hasOwnContact && (
+  <div class="footer__split">
+    <div class="footer__data">
+      <img
+        class="footer__logo"
+        src={LOGO.onDark}
+        alt={site.name}
+        width={LOGO.width}
+        height={LOGO.height}
+        loading="lazy"
+      />
+
+      <ul class="footer__items">
+        <li>
+          <Icon name="map-pin" size={20} />
+          <span>{site.address}</span>
+        </li>
+        <li>
+          <Icon name="clock" size={20} />
+          <span>{site.hours}</span>
+        </li>
+        {
+          lines.map((line) => (
+            <li class="footer__line">
+              <Icon name="phone" size={20} />
+              <span>
+                <span class="footer__line-label">{line.label}</span>
+                <span class="footer__phones">
+                  {line.phones.map((p, i) => (
+                    <>
+                      {i > 0 && <span aria-hidden="true"> · </span>}
+                      <a href={p.href}>{p.display}</a>
+                    </>
+                  ))}
+                  <span aria-hidden="true"> · </span>
+                  {line.wa ? (
+                    <a href={line.wa} target="_blank" rel="noopener noreferrer">
+                      WhatsApp {line.mobile}
+                    </a>
+                  ) : (
+                    <Placeholder what={`WhatsApp de ${line.label.toLowerCase()}`} from="Sebastián" />
+                  )}
+                </span>
+              </span>
+            </li>
+          ))
+        }
+        <li>
+          <Icon name="mail" size={20} />
+          {
+            SALES_EMAIL ? (
+              <a href={`mailto:${SALES_EMAIL}`}>{SALES_EMAIL}</a>
+            ) : (
+              <Placeholder what="mail de ventas" from="Sebastián" />
+            )
+          }
+        </li>
+      </ul>
+    </div>
+
+    <div class="footer__map">
+      <iframe
+        src={mapSrc}
+        title={`Mapa de ${site.address}`}
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+      ></iframe>
+    </div>
+  </div>
+  )}
+
+  <div class="footer__bar">
+    <div class="container footer__bar-inner">
+      <small>&copy; {year} {site.name}</small>
+      <a class="footer__top" href="#top">
+        Volver arriba
+        <Icon name="chevron-up" size={16} />
+      </a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background: var(--surface-dark);
+  }
+
+  .footer__social {
+    display: flex;
+    justify-content: center;
+    padding-block: var(--space-8);
+    border-top: 1px solid var(--rule-on-dark);
+  }
+
+  .footer__social-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-6);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    color: var(--text-on-dark-muted);
+  }
+
+  .footer__social-link {
+    display: flex;
+    align-items: center;
+    /* El área tocable no puede ser el glifo de 24px: en mobile queda por
+       debajo del mínimo cómodo. El padding la lleva a 40px sin mover nada. */
+    padding: var(--space-2);
+    /* Blanco pleno, no --text-on-dark-muted. Pedido explícito. El hover ahora
+       trabaja con opacidad en vez de color, porque desde blanco no queda a
+       dónde subir. */
+    color: var(--text-on-dark);
+    text-decoration: none;
+    opacity: 0.85;
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  .footer__social-link:hover,
+  .footer__social-link:focus-visible {
+    opacity: 1;
+  }
+
+
+
+  /* Split 50/50 a ancho completo: datos a la izquierda, mapa a la derecha */
+  .footer__split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 360px;
+  }
+
+  .footer__data {
+    background: var(--surface-dark-raised);
+    padding: var(--space-16) var(--gutter);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    justify-content: center;
+  }
+
+  /* `align-self` NO es opcional acá.
+     `.footer__data` es un flex en columna, y el default `align-items: stretch`
+     estira a los hijos a lo ancho del contenedor. Un <img> estirado con
+     `height` fijo no conserva la proporción: `width: auto` no protege del
+     estirado en el eje transversal, y el logo salía deformado a lo ancho de
+     media pantalla. Es el mismo tipo de falla que tuvo la franja de /service —
+     una medida que parece fija y que el layout de arriba pisa. */
+  .footer__logo {
+    display: block;
+    align-self: flex-start;
+    height: 40px;
+    width: auto;
+  }
+
+  .footer__items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--text-on-dark-muted);
+  }
+
+  .footer__items li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .footer__items svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--brand-bright);
+  }
+
+  .footer__phones {
+    display: block;
+  }
+
+  .footer__line-label {
+    display: block;
+    font-size: var(--fs-eyebrow);
+    line-height: var(--lh-eyebrow);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--text-on-dark-faint);
+  }
+
+  .footer__items a {
+    color: var(--text-on-dark-muted);
+    text-decoration: none;
+  }
+
+  .footer__items a:hover {
+    color: var(--brand-bright);
+  }
+
+  .footer__map iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 360px;
+    border: 0;
+    filter: var(--map-filter);
+  }
+
+  .footer__bar {
+    border-top: 1px solid var(--rule-on-dark);
+    padding-block: var(--space-4);
+  }
+
+  .footer__bar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: var(--fs-body-sm);
+    color: var(--text-on-dark-faint);
+  }
+
+  .footer__top {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text-on-dark-faint);
+    text-decoration: none;
+  }
+
+  .footer__top:hover {
+    color: var(--brand-bright);
+  }
+
+  @media (max-width: 899px) {
+    .footer__split {
+      grid-template-columns: 1fr;
+    }
+
+    .footer__data {
+      padding-block: var(--space-12);
+    }
+  }
+</style>

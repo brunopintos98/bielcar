@@ -1,0 +1,170 @@
+---
+import Icon from './Icon.astro';
+import Button from './Button.astro';
+import { site, SERVICES } from '../data/site';
+
+/**
+ * Bloque de servicios con íconos — §5.7. Banda clara.
+ *
+ * Izquierda: h2, párrafo, botón. Derecha: grilla 2x3 de ítems con ícono lineal
+ * de 40px, título de 18px y UNA línea de descripción, como pide §5.7.
+ *
+ * ─── Por qué ahora sí es "una línea" ────────────────────────────────────────
+ * Antes este bloque renderizaba `item.line`: el párrafo completo de Sebastián,
+ * de dos a tres renglones. Eso era una desviación deliberada de §5.7 para no
+ * recortar texto real del cliente. Ahora renderiza `item.blurb` — una versión
+ * de una sola oración (~100 caracteres) que es un subconjunto estricto de esas
+ * mismas palabras, sin agregar marcas, capacidades ni superlativos. `line`
+ * sigue existiendo tal cual en site.ts: es lo que /service renderiza como
+ * "qué incluye", sin recortar. Ver el JSDoc de `SERVICES` en site.ts para el
+ * detalle de cada blurb.
+ *
+ * ─── La permuta vive acá, no como banda propia ──────────────────────────────
+ * §5.10 es explícito: la banda de permuta va debajo del listado en /nuevos,
+ * /usados y /vehiculos, y NO se repite en el Home. Acá la permuta entra como
+ * un ítem más. Dos apariciones del mismo CTA en una vista lo devalúan.
+ *
+ * ─── Por qué el botón es fantasma y no WhatsApp ─────────────────────────────
+ * §5.3: el sólido verde es el color de conversión y este bloque no convierte,
+ * enruta. La conversión de service está en la banda de abajo (ServiceCta), que
+ * sí es WhatsApp. Poner WhatsApp en los dos sería el mismo CTA dos veces en
+ * media pantalla.
+ */
+/**
+ * Los seis ítems viven en `SERVICES` (site.ts), no acá.
+ *
+ * Los mismos párrafos de Sebastián los necesita /service para su bloque de
+ * "qué incluye", y tener el texto del cliente en dos archivos es cómo se
+ * desincroniza. Acá van los seis; /service filtra por `scope: 'taller'`.
+ *
+ * La lista de marcas que se interpola en el ítem "Servicio oficial" es
+ * SERVICE_BRANDS y no SALES_BRANDS: ahí se está afirmando que Bielcar hace
+ * service oficial, y de Honda, MG y Volvo no lo hace. Son 4, no 7. La
+ * interpolación ocurre en site.ts, junto al ⚠️ del conflicto con GWM.
+ */
+const items = SERVICES;
+---
+
+<section class="services band band--light">
+  <div class="container services__inner">
+    <div class="services__intro">
+      <p class="eyebrow services__eyebrow">Qué hacemos</p>
+      <h2 class="h2 services__title">Todo en un mismo lugar.</h2>
+      <p class="lede services__lede">
+        Venta, permuta, servicio oficial, taller multimarca, chapa y pintura.
+        Estamos en {site.address}, {site.hours.toLowerCase()}.
+      </p>
+      <div class="services__cta">
+        <Button variant="ghost-light" href="/service">Ver el service</Button>
+      </div>
+    </div>
+
+    <ul class="services__grid">
+      {
+        items.map((item) => (
+          <li class="service">
+            <Icon name={item.icon} size={40} class="service__icon" />
+            <h3 class="service__title">{item.title}</h3>
+            <p class="service__line">{item.blurb}</p>
+          </li>
+        ))
+      }
+
+    </ul>
+  </div>
+</section>
+
+<style>
+  .services__inner {
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: var(--space-16);
+    align-items: start;
+  }
+
+  /* .eyebrow y .lede están calibrados para banda oscura (base.css). Sobre claro
+     hay que bajarlos a los neutros de §2, o quedan lavados. */
+  .services__eyebrow {
+    color: var(--text-on-light-muted);
+  }
+
+  .services__title {
+    margin-top: var(--space-3);
+  }
+
+  .services__lede {
+    margin-top: var(--space-6);
+    color: var(--text-on-light-muted);
+  }
+
+  .services__cta {
+    margin-top: var(--space-8);
+  }
+
+  .services__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-12) var(--space-8);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .service__icon {
+    color: var(--brand-deep); /* §2.2: sobre claro va --brand-deep, no --brand */
+  }
+
+  .service__title {
+    margin-top: var(--space-4);
+    font-family: var(--font-body);
+    font-size: 18px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--text-on-light);
+  }
+
+  .service__line {
+    margin-top: var(--space-2);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--text-on-light-muted);
+    /* `item.blurb` ya es una sola oración corta (~100 caracteres): esto no
+       acomoda párrafos, es un tope de lectura para que en la columna ancha
+       la oración no estire de punta a punta. */
+    max-width: 46ch;
+  }
+
+  @media (max-width: 1099px) {
+    .services__inner {
+      grid-template-columns: 1fr;
+      gap: var(--space-12);
+    }
+  }
+
+  /* En mobile la grilla NO colapsa a una columna: se queda en dos.
+
+     Con una sola columna los seis ítems son seis bloques de ancho completo y la
+     sección mide varias pantallas de scroll — que es exactamente lo que se veía
+     mal. En dos columnas la misma información entra en la mitad de alto, y el
+     blurb pasa a leerse como una etiqueta corta en vez de como un párrafo.
+
+     Todo sigue alineado a la izquierda, como el resto del sitio (§4): un
+     intento de centrarlo dejó cada ítem tirando el ojo al margen en vez de al
+     ícono, y se descartó.
+
+     El gap de columna baja a --space-4: con --space-8 en un teléfono de 393px
+     cada columna se quedaba en ~164px y los títulos de dos palabras cortaban. */
+  @media (max-width: 599px) {
+    .services__grid {
+      gap: var(--space-8) var(--space-4);
+    }
+
+    /* El tope de 46ch existe para que la oración no estire de punta a punta en
+       la columna ANCHA de desktop. En una columna de ~170px no hace nada, pero
+       se neutraliza igual para que no aparezca como sospechoso si alguien
+       redimensiona la grilla más adelante. */
+    .service__line {
+      max-width: none;
+    }
+  }
+</style>

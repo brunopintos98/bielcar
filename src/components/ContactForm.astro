@@ -1,0 +1,131 @@
+---
+import WhatsAppForm from './WhatsAppForm.astro';
+import FormField from './FormField.astro';
+import {
+  SERVICE_BRANDS,
+  SERVICE_ENQUIRY_MESSAGE,
+  SERVICE_ENQUIRY_MOTIVO,
+} from '../data/site';
+
+/**
+ * Formulario de contacto — §5.4 y §7.
+ *
+ * Mismo tratamiento de campo y misma fontanería que el de service; lo propio
+ * de acá son los campos, el mensaje y la precarga por query string.
+ *
+ * ─── El campo "Motivo" ahora SÍ enruta ─────────────────────────────────────
+ * Ventas y taller atienden en WhatsApp distintos (CONTACT en site.ts), así que
+ * el motivo dejó de ser solo informativo: con "Service" el mensaje se manda al
+ * número del taller y con cualquier otro al de ventas. Eso es `routeMap`.
+ *
+ * Igual sigue viajando escrito en el texto, porque le ahorra la primera
+ * repregunta a quien atiende.
+ *
+ * Las cuatro opciones son líneas de negocio que el sitio ya afirma en otras
+ * páginas: no se inventa ninguna. **Si agregás una quinta, decidí también a
+ * qué línea va** — sin entrada en `routeMap` cae en ventas por defecto, que
+ * puede ser correcto o puede ser un mensaje perdido.
+ *
+ * ─── El mensaje libre va al final ──────────────────────────────────────────
+ * Los datos estructurados arriba y el texto de la persona abajo, separado por
+ * una línea en blanco. Al revés, un mensaje largo empuja el teléfono fuera de
+ * la vista previa de la notificación de WhatsApp.
+ *
+ * ─── Precarga desde /service ───────────────────────────────────────────────
+ * La franja de marcas de /service linkea acá con `?service=<marca>`. El script
+ * de abajo lee ese parámetro y deja el formulario listo: motivo en "Service" y
+ * el mensaje escrito con la marca. La persona ve qué va a mandar ANTES de
+ * mandarlo, que es todo el punto de no abrir WhatsApp directo desde el logo.
+ *
+ * Se hace en el cliente y no en el frontmatter porque el sitio es estático:
+ * las páginas se prerenderizan en build time y ahí `Astro.url.searchParams`
+ * viene vacío siempre. Un `Astro.url.searchParams.get('service')` acá arriba
+ * compilaría, no fallaría, y no andaría nunca — es el modo de falla silencioso
+ * de mezclar SSR con `output: 'static'`.
+ *
+ * ─── La validación NO es opcional ──────────────────────────────────────────
+ * El valor del query string se contrasta contra SERVICE_BRANDS y se descarta
+ * si no está en la lista. Volcar texto arbitrario de la URL al formulario
+ * dejaría armar un `/contacto?service=<lo que sea>` que precargue un mensaje
+ * engañoso, para mandárselo a otra persona y que lo envíe a Bielcar sin
+ * leerlo. No es XSS —se asigna a `.value`, no a `innerHTML`— pero es
+ * suplantación, y sale gratis cerrarla.
+ */
+const TEMPLATE = `Hola, quiero hacer una consulta.
+
+Motivo: {motivo}
+Nombre: {nombre}
+Teléfono: {telefono}
+
+{mensaje}`;
+
+const MOTIVOS = [
+  { value: 'Ventas (0km y usados)', label: 'Ventas (0km y usados)' },
+  { value: SERVICE_ENQUIRY_MOTIVO, label: 'Service' },
+  { value: 'Permuta', label: 'Permuta' },
+  { value: 'Otro', label: 'Otro' },
+];
+---
+
+<div
+  data-contact-form
+  data-service-brands={SERVICE_BRANDS.join('|')}
+  data-service-message={SERVICE_ENQUIRY_MESSAGE}
+  data-service-motivo={SERVICE_ENQUIRY_MOTIVO}
+>
+  <WhatsAppForm
+    template={TEMPLATE}
+    submitLabel="Enviar por WhatsApp"
+    routeField="motivo"
+    routeMap={{ [SERVICE_ENQUIRY_MOTIVO]: 'service' }}
+  >
+    <FormField prefix="cf" name="nombre" label="Nombre" autocomplete="name" />
+    <FormField prefix="cf" name="telefono" label="Teléfono" type="tel" autocomplete="tel" />
+    <FormField prefix="cf" name="motivo" label="Motivo" control="select" options={MOTIVOS} wide />
+    <FormField
+      prefix="cf"
+      name="mensaje"
+      label="Mensaje"
+      control="textarea"
+      rows={5}
+      autocomplete="off"
+      wide
+    />
+  </WhatsAppForm>
+</div>
+
+<script>
+  /* Precarga el formulario cuando se llega desde la franja de /service.
+     Ver la nota del frontmatter: esto va sí o sí en el cliente porque el sitio
+     es estático, y el parámetro se valida contra la lista de marcas. */
+  const root = document.querySelector<HTMLElement>('[data-contact-form]');
+  const brand = new URLSearchParams(window.location.search).get('service');
+
+  if (root && brand) {
+    const allowed = (root.dataset.serviceBrands ?? '').split('|').filter(Boolean);
+
+    /* Comparación exacta contra la lista. Cualquier otra cosa se ignora en
+       silencio: el formulario queda vacío, que es el estado correcto para un
+       link con un parámetro que no reconocemos. */
+    if (allowed.includes(brand)) {
+      const motivo = document.querySelector<HTMLSelectElement>('#cf-motivo');
+      const mensaje = document.querySelector<HTMLTextAreaElement>('#cf-mensaje');
+      const nombre = document.querySelector<HTMLInputElement>('#cf-nombre');
+
+      if (motivo && root.dataset.serviceMotivo) {
+        motivo.value = root.dataset.serviceMotivo;
+      }
+
+      if (mensaje && root.dataset.serviceMessage) {
+        mensaje.value = root.dataset.serviceMessage.replace('{marca}', brand);
+      }
+
+      /* El foco va al primer campo que la persona TIENE que completar, no al
+         principio del formulario: motivo y mensaje ya están escritos, y lo que
+         falta es quién es y a qué teléfono llamarla. Además el foco arrastra
+         el scroll, así que el formulario queda a la vista sin scrollear a mano
+         ni animar nada. */
+      nombre?.focus();
+    }
+  }
+</script>

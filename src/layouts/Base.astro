@@ -1,0 +1,212 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import WhatsAppFab from '../components/WhatsAppFab.astro';
+import {
+  site,
+  cleanPath,
+  ALL_PHONES,
+  ADDRESS_PARTS,
+  HOURS_SPEC,
+  OPEN_DAYS,
+  OG_IMAGE,
+  LOGO,
+  SALES_BRANDS,
+  SALES_EMAIL,
+  SOCIAL_PROFILES,
+} from '../data/site';
+
+import '../styles/tokens.css';
+import '../styles/base.css';
+
+/**
+ * Layout base.
+ *
+ * Dos cosas que NO están acá a propósito:
+ *
+ * 1. NO se importa ClientRouter / ViewTransitions. El routing client-side
+ *    re-monta el DOM y el plugin de Multiaviso no se reinicializa. Page loads
+ *    completos siempre.
+ *
+ * ─── El viewport SÍ se declara. Antes no, y era un bug ─────────────────────
+ * Acá había una ausencia deliberada, con este razonamiento: "el plugin inyecta
+ * su propio viewport con `user-scalable=no` y pisa cualquiera que pongamos,
+ * así que declararlo daría la falsa impresión de que lo controlamos".
+ *
+ * El razonamiento solo valía en las páginas QUE CARGAN EL PLUGIN — /, /nuevos,
+ * /usados y /vehiculos. En /service, /nosotros y /contacto no hay plugin y no
+ * había nadie que inyectara nada: quedaban SIN viewport meta, o sea que los
+ * navegadores móviles asumían un viewport de ~980px y las maquetaban como
+ * desktop. La nav completa sin hamburguesa, las grillas en dos columnas y el
+ * texto diminuto que se veía en mobile eran eso.
+ *
+ * Ahora se declara siempre. En las páginas del plugin el suyo sigue ganando
+ * —se inyecta después, en runtime— así que ahí no cambia nada respecto de
+ * antes; en las otras tres es el único y son responsive.
+ *
+ * NO lleva `user-scalable=no`: esa restricción es justamente el problema de
+ * accesibilidad abierto con Madfes (DESIGN §6.2), y no hay motivo para
+ * replicarla de nuestro lado. Si Madfes desactiva su inyección, este meta pasa
+ * a gobernar el sitio entero y ya está puesto como corresponde.
+ *
+ * ─── El canonical convive con uno del plugin ───────────────────────────────
+ * ⚠️  En las páginas de catálogo el plugin inyecta SU PROPIO <link rel="canonical">
+ * apuntando a la URL actual (DESIGN §6.2). O sea que ahí el documento termina
+ * con dos: el nuestro, de build time y sin querystring, y el suyo, de runtime y
+ * con `?ma_carid=` cuando se está viendo un vehículo. Google ignora la
+ * directiva entera cuando hay más de un canonical, así que esto puede estar
+ * anulando los dos.
+ *
+ * No se "arregla" acá por adivinanza: sacar el nuestro dejaría sin canonical a
+ * /nuevos, /usados y /vehiculos si el plugin cambia de comportamiento. Hay que
+ * VERIFICARLO en bielcar.vercel.app —mirar el <head> de una URL con
+ * ?ma_carid=— y preguntarle a Madfes si se puede desactivar la inyección,
+ * igual que con el viewport meta. Anotado en el README.
+ */
+interface Props {
+  title: string;
+  description: string;
+  /** Imagen de Open Graph. Por defecto la tarjeta de marca. */
+  image?: string;
+}
+
+const { title, description, image = OG_IMAGE.src } = Astro.props;
+
+/* §3 pide cargar SOLO los cortes usados: display 400/500, body 400/500/600.
+   La familia display es Space Grotesk — ver la nota en tokens.css. Son dos familias y cinco cortes — cada
+   peso de más es un archivo más en la ruta crítica. */
+const FONTS_HREF =
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;500&display=swap';
+
+const fullTitle = title === site.name ? title : `${title} — ${site.shortName}`;
+const canonical = new URL(cleanPath(Astro.url.pathname), site.url).href;
+const imageUrl = new URL(image, site.url).href;
+
+/**
+ * Ficha del negocio para buscadores.
+ *
+ * Va en TODAS las páginas y no solo en el Home. Un flag por página es una cosa
+ * más que alguien se olvida de prender al agregar una ruta, y el dato es
+ * igual de cierto en todas. Los buscadores deduplican la entidad.
+ *
+ * Todo sale de site.ts, o sea de datos confirmados por Sebastián. Lo que NO
+ * está acá es tan deliberado como lo que está: no hay `priceRange` (nadie lo
+ * confirmó) y no hay `geo` (no tenemos coordenadas medidas, y estimarlas de la
+ * dirección es exactamente el tipo de dato inventado que este proyecto no
+ * acepta).
+ *
+ * `sameAs` lleva SOLO los perfiles —Instagram, Facebook, Mercado Libre— y no
+ * el link de WhatsApp: `sameAs` significa "la misma entidad en otro lado de la
+ * web", y un `wa.me` es una forma de escribirle, no un perfil. El filtro está
+ * en `SOCIAL_PROFILES`.
+ *
+ * `AutomotiveBusiness` y no `AutoDealer`: Bielcar además del salón tiene
+ * taller multimarca, chapa y pintura y servicio oficial, y `AutoDealer` solo
+ * describe la venta.
+ */
+const businessSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'AutomotiveBusiness',
+  name: site.name,
+  url: site.url,
+  logo: new URL(LOGO.light, site.url).href,
+  image: imageUrl,
+  /* ALL_PHONES y no una de las dos líneas: acá se está describiendo a la
+     empresa, no ofreciendo un canal, así que van los fijos de ventas y los del
+     taller juntos. Los celulares no: son los mismos que los WhatsApp y
+     repetirlos no agrega un canal. */
+  telephone: ALL_PHONES.map((p) => p.href.replace('tel:', '')),
+  ...(SALES_EMAIL ? { email: SALES_EMAIL } : {}),
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: ADDRESS_PARTS.street,
+    addressLocality: ADDRESS_PARTS.locality,
+    addressCountry: ADDRESS_PARTS.country,
+  },
+  openingHoursSpecification: HOURS_SPEC.map((h) => ({
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: OPEN_DAYS,
+    opens: h.opens,
+    closes: h.closes,
+  })),
+  brand: SALES_BRANDS.map((b) => ({ '@type': 'Brand', name: b })),
+  ...(SOCIAL_PROFILES.length > 0 ? { sameAs: SOCIAL_PROFILES.map((s) => s.href) } : {}),
+};
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    {/* Ver la nota del frontmatter: en las páginas de catálogo el plugin
+        inyecta el suyo encima. Sin este, /service, /nosotros y /contacto
+        se maquetan como desktop en mobile. */}
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="canonical" href={canonical} />
+
+    {/* Open Graph — lo que se ve cuando alguien manda el link por WhatsApp,
+        que para una automotora es media venta (DESIGN §6.4). */}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:locale" content="es_UY" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:width" content={String(OG_IMAGE.width)} />
+    <meta property="og:image:height" content={String(OG_IMAGE.height)} />
+    <meta property="og:image:alt" content={site.name} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+
+    <meta name="theme-color" content="#0D0D0D" />
+
+    {/* Las fuentes no bloquean el render.
+        Un <link rel="stylesheet"> normal a fonts.googleapis.com bloquea el
+        primer pintado hasta que resuelve, y son dos saltos de red: el CSS y
+        después los .woff2. Con `media="print"` el browser lo baja con
+        prioridad baja y sin bloquear, y el onload lo pasa a `all` cuando
+        llegó. El <noscript> cubre el caso sin JS.
+
+        No agrega parpadeo: `display=swap` ya hace que el texto se pinte con la
+        fallback y cambie al llegar la real. Lo que cambia es CUÁNDO aparece el
+        texto, que ahora es de entrada. */}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href={FONTS_HREF} />
+    <link rel="stylesheet" href={FONTS_HREF} media="print" data-font-css />
+    <noscript><link rel="stylesheet" href={FONTS_HREF} /></noscript>
+    {/* El clásico de esto es `onload="this.media='all'"` en el propio <link>.
+        Va como script por dos razones: `astro check` parsea el atributo como
+        TypeScript y lo marca, y el atributo pierde el caso en que la hoja YA
+        cargó antes de que el handler existiera —posible con el preload de
+        arriba—, que acá cubre la rama del `sheet`. `is:inline` para que corra
+        donde está y no al final del bundle. */}
+    <script is:inline>
+      document.querySelectorAll('link[data-font-css]').forEach(function (l) {
+        if (l.sheet) l.media = 'all';
+        else l.addEventListener('load', function () { l.media = 'all'; }, { once: true });
+      });
+    </script>
+
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(businessSchema)} />
+
+    <slot name="head" />
+  </head>
+
+  <body id="top">
+    <a class="skip-link" href="#main">Saltar al contenido</a>
+    <Header />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+    <WhatsAppFab />
+  </body>
+</html>

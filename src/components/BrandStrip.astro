@@ -1,0 +1,436 @@
+---
+import Placeholder from './Placeholder.astro';
+import { BRAND_LOGOS, SALES_BRANDS, brandFilterHref } from '../data/site';
+
+/**
+ * Franja de marcas — §5.6, pero como NAVEGACIÓN y en movimiento.
+ *
+ * §5.6 la describe como una vidriera estática de marcas de servicio oficial.
+ * Acá es navegación y se mueve: cada logo entra al catálogo filtrado por esa
+ * marca. Desviación deliberada del documento, pedida por Sebastián.
+ *
+ * Hoy se usa en una sola configuración: sin props, o sea las 7 de
+ * `SALES_BRANDS`, ordenadas de la que más vende a la que menos, en el Home y
+ * en el footer. Va SIN título a propósito — los logos se explican solos y así
+ * la franja no afirma nada sobre servicio oficial.
+ *
+ * **La regla que hay que sostener: esta franja no puede titularse "servicio
+ * oficial" mientras muestre las 7.** De Honda, MG y Volvo Bielcar vende pero
+ * no da service oficial. Si alguien pasa `title`, tiene que revisar que lo que
+ * dice sea cierto de todas las marcas que están abajo.
+ *
+ * No confundir con <ServiceBrands>, que es la franja de /service: 4 marcas,
+ * quieta, y cada logo abre WhatsApp en vez de ir al catálogo. Se parecen y
+ * hacen cosas distintas; están separadas justamente por eso.
+ *
+ * ⚠️  Los links dependen de `ma_brand`, que no está verificado. Ver
+ * `brandFilterHref` en site.ts.
+ *
+ * ─── El marquee, sin JavaScript ─────────────────────────────────────────────
+ * La lista se renderiza N veces dentro de un track que se traslada exactamente
+ * el ancho de UNA copia. Cuando la primera terminó de salir, la segunda está
+ * donde estaba la primera al empezar, así que el reinicio del ciclo es
+ * invisible. N lo calcula el frontmatter según cuántas marcas recibe la franja
+ * — ver el bloque de `copies` más abajo.
+ *
+ * Las copias van con `aria-hidden` y sus links con `tabindex="-1"`: visualmente
+ * son los mismos logos, y un lector de pantalla o un tabulador no tienen por
+ * qué recorrerlos varias veces.
+ *
+ * Nada de JS: es decorativo y continuo, y un `requestAnimationFrame` para esto
+ * solo agrega una cosa más que puede romperse.
+ */
+interface Props {
+  /**
+   * Título visible. Sin esto la franja va sin encabezado, que es como va hoy:
+   * los logos se explican solos. El nombre accesible no depende de esto.
+   */
+  title?: string;
+  /** Nombres de marca, en orden. Por defecto las 7 que vende. */
+  brands?: readonly string[];
+}
+
+const { title, brands = SALES_BRANDS } = Astro.props;
+
+const entries = brands.map((name) => ({ name, logo: BRAND_LOGOS[name] ?? null }));
+const missingLogos = entries.filter((b) => !b.logo).map((b) => b.name);
+
+/**
+ * Cuántas copias del track hacen falta, y a qué velocidad.
+ *
+ * Eran tres copias fijas, calibradas a ojo para las 7 marcas de venta: 7
+ * logos de 132px más 7 gaps de 64px da ~1370px por copia, y tres copias llenan
+ * cualquier monitor. Pero el número de marcas es un PROP, y con 4 una copia
+ * mide ~780px y el track ~2350px: en un monitor de 2560px se ve el hueco entre
+ * el final del track y el reinicio, o sea que el marquee deja de ser continuo
+ * justo en las pantallas donde más se nota. Y a 60s fijos recorre poco más de
+ * la mitad de distancia en el mismo tiempo, así que además se arrastra.
+ *
+ * Con el default de 7 esto da 3 copias y 60s, o sea exactamente lo de antes.
+ * El cálculo está para que el prop `brands` no sea una trampa: hoy nadie lo
+ * pasa, pero existe, y la franja de /service llegó a usarlo con 4 marcas antes
+ * de convertirse en <ServiceBrands>.
+ *
+ * Se fija un piso de ítems visibles en vez de un número de copias: con 21
+ * ítems el track supera un ultrawide con cualquier cantidad de marcas. El
+ * mínimo de 3 copias se conserva porque con menos la costura se percibe.
+ */
+const MIN_VISIBLE_ITEMS = 21;
+const REFERENCE_COUNT = 7;
+const REFERENCE_SPEED_S = 60;
+
+/**
+ * ─── En mobile son DOS filas, en sentidos opuestos ─────────────────────────
+ * Con una sola fila entraban 2,6 logos a la vez en un viewport de 393px
+ * (medido: caja de 112px + 40px de gap = 152px por slot). O sea que para ver
+ * las 7 marcas había que esperar el ciclo entero, y la franja dejaba de
+ * funcionar como navegación.
+ *
+ * En mobile se parte en dos filas —4 arriba, 3 abajo— que corren en sentidos
+ * contrarios, y se achican logo y gap a 112px por slot. Ahí entran ~3,5 por
+ * fila, o sea las 7 a la vista al mismo tiempo, sin perder el movimiento.
+ *
+ * En desktop NO se parte: con el gap de 64px las 7 ya entran en una fila.
+ *
+ * Cada fila vive en un solo breakpoint (`display:none` en el otro), y eso
+ * resuelve de paso un bug: la velocidad se emite como custom property inline,
+ * y una property inline le gana a cualquier regla de hoja de estilos. El
+ * `--brands-speed: 45s` que había en el bloque de mobile estaba MUERTO —
+ * verificado en Chrome: 60s a 393px y a 1400px. Ahora cada fila lleva su
+ * propia velocidad inline y no hay override que pueda quedar inerte.
+ *
+ * MIN_VISIBLE_ITEMS es más chico en las filas de mobile: 21 ítems está
+ * calibrado para tapar un ultrawide, y acá el track solo tiene que cubrir
+ * 899px como máximo. Sin esto una fila de 3 marcas pedía 7 copias de DOM para
+ * nada.
+ */
+const MIN_VISIBLE_ITEMS_MOBILE = 16;
+const MOBILE_REFERENCE_SPEED_S = 26;
+
+function makeRow(
+  key: string,
+  items: typeof entries,
+  opts: { reverse?: boolean; mobile?: boolean } = {}
+) {
+  const minVisible = opts.mobile ? MIN_VISIBLE_ITEMS_MOBILE : MIN_VISIBLE_ITEMS;
+  const reference = opts.mobile ? MOBILE_REFERENCE_SPEED_S : REFERENCE_SPEED_S;
+  return {
+    key,
+    items,
+    reverse: opts.reverse ?? false,
+    mobile: opts.mobile ?? false,
+    copies: Math.max(3, Math.ceil(minVisible / Math.max(items.length, 1))),
+    speedS: Math.max(6, Math.round((reference * items.length) / REFERENCE_COUNT)),
+  };
+}
+
+const half = Math.ceil(entries.length / 2);
+const rows = [
+  makeRow('single', entries),
+  makeRow('a', entries.slice(0, half), { mobile: true }),
+  makeRow('b', entries.slice(half), { mobile: true, reverse: true }),
+];
+---
+
+<section class="brands" aria-label={title ?? 'Marcas'}>
+  {
+    title && (
+      <div class="container">
+        <p class="eyebrow brands__title">{title}</p>
+      </div>
+    )
+  }
+
+  {
+    rows.map((row) => (
+      <div
+        class:list={[
+          'brands__row',
+          row.mobile ? 'brands__row--split' : 'brands__row--single',
+          row.reverse && 'brands__row--reverse',
+        ]}
+      >
+        <div class="brands__viewport">
+          <div
+            class="brands__track"
+            style={`--brands-copies: ${row.copies}; --brands-speed: ${row.speedS}s`}
+          >
+          {
+            /* La cantidad la decide `copies` en el frontmatter, no un literal:
+               depende de cuántas marcas recibe la franja. Son muchos <img> pero
+               pocos archivos — las copias salen del cache. */
+            Array.from({ length: row.copies }, (_, i) => i > 0).map((isClone) => (
+              <ul class="brands__list" aria-hidden={isClone ? 'true' : undefined}>
+                {row.items.map((brand) => (
+                  <li>
+                    <a
+                      class="brands__link"
+                      href={brandFilterHref(brand.name)}
+                      aria-label={isClone ? undefined : `Ver vehículos ${brand.name}`}
+                      tabindex={isClone ? -1 : undefined}
+                    >
+                      {brand.logo ? (
+                        <img
+                          class="brands__logo"
+                          src={brand.logo.src}
+                          alt={isClone ? '' : brand.name}
+                          width={brand.logo.w}
+                          height={brand.logo.h}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span class="brands__wordmark">{brand.name}</span>
+                      )}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ))
+          }
+          </div>
+        </div>
+      </div>
+    ))
+  }
+
+  {
+    missingLogos.length > 0 && (
+      <div class="container">
+        <p class="brands__missing">
+          <Placeholder what={`logo de ${missingLogos.join(', ')}`} from="Sebastián" />
+        </p>
+      </div>
+    )
+  }
+</section>
+
+<style>
+  .brands {
+    /* El gap entra en el cálculo del desplazamiento, así que es una variable y
+       no un número suelto: si cambia acá, la costura del loop se reajusta sola. */
+    --brands-gap: 64px;
+    /* Fallbacks. Los valores reales los inyecta el frontmatter como estilo
+       inline, porque dependen de cuántas marcas recibe la franja. */
+    --brands-speed: 60s;
+    --brands-copies: 3;
+
+    padding-block: var(--space-12);
+    background: var(--surface-dark);
+  }
+
+  .brands__title {
+    margin-bottom: var(--space-8);
+    text-align: center;
+  }
+
+  /* ─── Qué fila se ve en cada breakpoint ─────────────────────────────────
+     Las tres filas están siempre en el DOM y el breakpoint elige. La que se
+     oculta con `display:none` sale también del árbol de accesibilidad, así que
+     un lector de pantalla nunca ve las marcas duplicadas: en desktop lee las 7
+     de la fila única, en mobile las 4 + 3 de las partidas. */
+  .brands__row--split {
+    display: none;
+  }
+
+  /* La segunda fila corre al revés. Misma animación, sentido invertido: no hay
+     un segundo @keyframes que mantener en sincronía con el primero. */
+  .brands__row--reverse .brands__track {
+    animation-direction: reverse;
+  }
+
+  /* A ancho de viewport, sin container: una fila que se desplaza y frena contra
+     un margen invisible se lee como un error de layout, no como un carrusel. */
+  .brands__viewport {
+    overflow: hidden;
+  }
+
+  .brands__track {
+    display: flex;
+    /* Explícito aunque sea el default: si esto envuelve, las copias se apilan
+       una abajo de la otra y el marquee deja de existir. Es el modo de falla
+       de este componente, no un detalle. */
+    flex-wrap: nowrap;
+    gap: var(--brands-gap);
+    width: max-content;
+    animation: brands-marquee var(--brands-speed) linear infinite;
+  }
+
+  /* ─── La pausa por hover, SOLO donde hay hover de verdad ────────────────
+     Estaba como `.brands__track:hover, .brands__track:focus-within` sin
+     condición, y en mobile eso lo dejaba clavado: iOS Safari aplica `:hover`
+     al tocar un elemento y lo MANTIENE hasta que tocás en otro lado. O sea que
+     el primer toque sobre un logo frenaba la franja y ya no arrancaba más.
+
+     `@media (hover: hover)` es la pregunta correcta —"¿este dispositivo puede
+     hacer hover?"— y no un breakpoint de ancho: una notebook con pantalla
+     táctil y mouse contesta que sí y conserva la pausa, un teléfono contesta
+     que no. Atarlo a 899px habría apagado la pausa en tablets con mouse. */
+  @media (hover: hover) {
+    .brands__track:hover {
+      animation-play-state: paused;
+    }
+  }
+
+  /* El foco SÍ pausa, con o sin hover: tabular hasta un logo y que siga
+     moviéndose bajo el anillo de foco es inusable con teclado.
+
+     Pero va por `:has(:focus-visible)` y NO por `:focus-within`. Con
+     `:focus-within` la franja quedaba clavada en mobile, y por una razón
+     distinta a la del `:hover` de arriba: al tocar una marca el link recibe
+     FOCO, el tap navega, y cuando el usuario vuelve con el back el navegador
+     RESTAURA el foco a ese link. O sea que la home se volvía a dibujar con el
+     track ya en `:focus-within` y el marquee no arrancaba nunca más.
+
+     La nota vieja acá decía "en touch no molesta porque el tap navega". Era
+     verdad para la ida y falsa para la vuelta.
+
+     `:focus-visible` es la pregunta correcta: matchea cuando el navegador
+     decide que el foco merece indicarse —o sea navegación por teclado— y no
+     cuando el foco llegó por un tap o un click. `:has()` es lo que la traduce
+     de "el link está enfocado" a "el track contiene algo enfocado". */
+  .brands__track:has(:focus-visible) {
+    animation-play-state: paused;
+  }
+
+  /* Recorre exactamente UNA copia: con N copias y N-1 gaps entre ellas, una
+     copia con su gap mide (100% + gap) / N. Ese `+ gap / N` es lo que evita el
+     saltito en la costura — sin él el loop reinicia un gap corrido.
+     `--brands-copies` la fija el frontmatter según cuántas marcas hay; el
+     fallback a 3 mantiene el comportamiento viejo si alguien la borra. */
+  @keyframes brands-marquee {
+    from {
+      transform: translateX(
+        calc(-100% / var(--brands-copies, 3) - var(--brands-gap) / var(--brands-copies, 3))
+      );
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .brands__list {
+    display: flex;
+    flex-wrap: nowrap;
+    /* Sin esto las copias pueden encogerse si algún ancestro restringe el ancho,
+       y las tres dejan de medir lo mismo — que es lo único que sostiene el loop. */
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--brands-gap);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* El área clickeable es la caja entera, no el glifo: con `contain` el logo
+     ocupa una fracción de la caja y apuntarle sería un blanco chico. */
+  .brands__link {
+    display: block;
+    padding: var(--space-2);
+    text-decoration: none;
+  }
+
+  /* Caja fija + `contain` en vez de normalizar por alto.
+     Los siete tienen aspectos muy distintos: Volvo es 7:1 y MG cuadrado.
+     Igualando solo el alto, el wordmark de Volvo queda siete veces más ancho
+     que MG y la fila se desbalancea. La caja los mete a todos en el mismo
+     rectángulo óptico. Funciona porque además están recortados al glifo. */
+  .brands__logo {
+    display: block;
+    width: 132px;
+    height: 52px;
+    object-fit: contain;
+    /* Conserva el alpha y lleva el glifo a blanco puro (§5.6). Requiere que el
+       PNG tenga matte alpha: con fondo opaco esto da un bloque blanco. */
+    filter: brightness(0) invert(1);
+    /* §5.6 pide 0.75 en reposo. Va 0.55 porque acá el hover tiene que hacer dos
+       cosas a la vez —frenar la fila y destacar el logo— y desde 0.75 el salto
+       a blanco pleno casi no se percibe. */
+    opacity: 0.55;
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  .brands__link:hover .brands__logo,
+  .brands__link:focus-visible .brands__logo {
+    opacity: 1;
+  }
+
+  /* Fallback para una marca sin archivo. Hoy no se usa. */
+  .brands__wordmark {
+    display: grid;
+    place-items: center;
+    width: 132px;
+    height: 52px;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text-on-dark);
+    opacity: 0.55;
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  .brands__link:hover .brands__wordmark {
+    opacity: 1;
+  }
+
+  .brands__missing {
+    margin-top: var(--space-8);
+    text-align: center;
+  }
+
+  @media (max-width: 899px) {
+    .brands {
+      /* 16px y no 40: el gap es la mitad del slot en mobile. Con 40 entraban
+         2,6 logos; con 16 y el logo en 80px el slot queda en 112 y entran
+         ~3,5 por fila, o sea las 7 entre las dos. */
+      --brands-gap: 16px;
+    }
+
+    /* NO va `--brands-speed` acá: es una custom property inline en cada track y
+       ninguna regla de hoja de estilos puede pisarla. La velocidad de mobile la
+       calcula el frontmatter por fila. Ver la nota de arriba. */
+
+    .brands__row--single {
+      display: none;
+    }
+
+    .brands__row--split {
+      display: block;
+    }
+
+    .brands__row--split + .brands__row--split {
+      margin-top: var(--space-4);
+    }
+
+    .brands__logo,
+    .brands__wordmark {
+      width: 80px;
+      height: 34px;
+    }
+
+    .brands__wordmark {
+      font-size: 15px;
+    }
+  }
+
+  /* Sin movimiento: la fila vuelve a ser una franja estática centrada y la copia
+     desaparece. base.css ya neutraliza la animación globalmente, pero sin esto
+     quedarían catorce logos apretados en una sola línea. */
+  @media (prefers-reduced-motion: reduce) {
+    .brands__track {
+      animation: none;
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .brands__track > [aria-hidden='true'] {
+      display: none;
+    }
+
+    .brands__list {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+</style>

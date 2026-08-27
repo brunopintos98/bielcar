@@ -1,0 +1,1250 @@
+/* ==========================================================================
+   multiaviso.css — overrides del plugin de terceros
+   ==========================================================================
+
+   VERIFICADA CONTRA EL DOM EN VIVO de bielcar.vercel.app (listado y detalle).
+
+   Hasta esta pasada la hoja estaba escrita contra §6.1, que documenta solo el
+   LISTADO. La sección del detalle era una apuesta declarada y **estaba mal**:
+   apuntaba a `.btn-contact` / `#BtnContact` / `input[type=submit]`, y los
+   nodos reales son `a#ContactNow` e `input#BtnMASubmit` (que es `type=button`,
+   no `submit`). Por eso el CTA del detalle salía con el azul del plugin.
+
+   Moraleja para la próxima: un selector que no matchea no rompe nada, y por
+   eso no se nota. Capturar el DOM antes de escribir el override no es
+   opcional.
+
+   ─── LA REGLA MECÁNICA PARA ESCRIBIR ACÁ ──────────────────────────────────
+
+       nuestro selector = `.catalog ` + el selector EXACTO del plugin
+
+   La hoja del plugin está en
+   https://automotora.multiaviso.com/Styles/plugin-style.css?v=7 — es pública,
+   se lee. Copiar su cadena y anteponerle `.catalog` suma exactamente una clase,
+   así que siempre ganamos por un punto, sin `!important` y sin inventar.
+
+   Esto NO es una preferencia de estilo, es lo que costó tres intentos. Escribir
+   `.catalog #MultiavisoWrapper #List .item-title a` en vez de
+   `.catalog #MultiavisoWrapper #List .item .item-title a` da EMPATE con el
+   plugin (2,2,1), y en un empate gana el que carga último — que es él, porque
+   se inyecta en runtime. El síntoma es cruel: la regla existe, se ve en
+   devtools, y está tachada.
+
+   ─── Reglas que no se rompen ───────────────────────────────────────────────
+
+   1. TODO selector va prefijado con `.catalog #MultiavisoWrapper`. Nunca
+      `.item-title` suelto: son clases genéricas y chocan con el resto del sitio.
+
+      El `.catalog` de adelante NO es decorativo: es un punto de especificidad
+      extra, y es lo que hace que ganemos. La hoja del plugin se inyecta en
+      <head> en RUNTIME, o sea después de la nuestra, así que con especificidad
+      IGUAL gana él. Eso es lo que pasaba con el fondo de las tarjetas: nuestro
+      `#MultiavisoWrapper #List .item` empataba con el suyo y perdía por orden,
+      y por eso el cuerpo de las cards salía blanco pese al override. Con
+      `.catalog` adelante sumamos una clase y el empate se rompe a favor
+      nuestro — sin usar `!important`, que §6.3 reserva para los estilos
+      inline.
+
+   2. Ganar por especificidad de ID, no por `!important`. La hoja del plugin se
+      inyecta en <head> en runtime, o sea DESPUÉS de esta. Un selector con ID
+      le gana igual. `!important` queda reservado para donde el plugin usa
+      estilos inline (el acordeón de filtros, básicamente).
+
+   3. No manipular el markup del plugin con JavaScript. Si algo hay que
+      ajustar, es CSS.
+
+   4. El plugin YA es responsive y funciona. La estrategia es restilar, no
+      rearmar (§6.2). Toda modificación estructural tiene que justificarse
+      contra lo que ya anda.
+
+   ─── El switch de superficie ───────────────────────────────────────────────
+
+   El plugin fue diseñado para fondo claro: todos sus grises de texto están
+   calculados para eso. §6.3 documenta un fallback: si sobre banda oscura queda
+   ilegible o hay que pelear selector por selector, hacer las páginas de
+   catálogo sobre `--surface-light`.
+
+   Todos los overrides usan tokens locales `--ma-*`, así que el tema es un
+   atributo en MultiavisoCatalog.astro:
+
+       <div class="catalog" data-surface="light">   ← o "dark"
+
+   **El listado quedó en "light", y esa es la decisión de §6.3 tomada con el
+   resultado a la vista.** Sobre oscuro: el plugin pinta el cuerpo de las
+   tarjetas en blanco y gana por especificidad, y todo lo que pinta en gris
+   oscuro —labels de filtro, valores de ficha, título del detalle— desaparecía
+   contra el fondo. Pelear eso selector por selector es justo lo que el
+   documento desaconseja.
+
+   El carrusel del Home sigue en "dark": ahí solo hay tarjetas, sin filtros ni
+   ficha, y una tarjeta blanca sobre banda oscura se lee perfecto.
+   ========================================================================== */
+
+/* ---------------------------------------------------- 1. tokens de superficie */
+
+.catalog[data-surface='dark'] {
+  --ma-bg: var(--surface-dark);
+  --ma-bg-raised: var(--surface-dark-raised);
+  --ma-text: var(--text-on-dark);
+  --ma-text-muted: var(--text-on-dark-muted);
+  --ma-text-faint: var(--text-on-dark-faint);
+  --ma-rule: var(--rule-on-dark);
+  --ma-link: var(--brand-bright);
+  --ma-link-hover: var(--text-on-dark);
+}
+
+.catalog[data-surface='light'] {
+  --ma-bg: var(--surface-light);
+  --ma-bg-raised: #ffffff;
+  --ma-text: var(--text-on-light);
+  --ma-text-muted: var(--text-on-light-muted);
+  --ma-text-faint: var(--text-on-light-muted);
+  --ma-rule: var(--rule-on-light);
+  --ma-link: var(--brand-deep);
+  --ma-link-hover: var(--brand);
+}
+
+.catalog {
+  background: var(--ma-bg);
+  padding-block: var(--section-y);
+
+  /* Tamaño del precio en la CARD (listado y carrusel).
+
+     Estuvo en 26px una vuelta, cuando la grilla mostraba 4 columnas y cada
+     card medía ~300px: ahí los 34px de §5.5 se comían la tarjeta. Con DOS
+     columnas la card pasa a ~700px, que es el ancho para el que ese valor está
+     dibujado, así que vuelve al del documento.
+
+     Vale la pena registrar el vínculo: **este número depende del ancho de la
+     card, o sea del número de columnas.** Si alguien vuelve a 3 o 4, hay que
+     bajarlo de nuevo. */
+  --ma-price-size: var(--fs-price);
+}
+
+/* Sin ritmo de banda: en las páginas de listado el catálogo es el contenido de
+   la página, no una sección entre secciones. Los paddings de adentro siguen
+   siendo del plugin (`#MultiavisoWrapper` 5px, `#ListWrapper` 20px / 5px 10px
+   en mobile) y no se tocan. */
+.catalog[data-view='list'] {
+  padding-block: 0;
+}
+
+/* ─── Alto reservado mientras el plugin carga ─────────────────────────────── */
+
+/* El markup lo inyecta el plugin en runtime tras un fetch, así que el
+   contenedor arranca con alto 0 y todo lo que va DEBAJO —la banda de permuta,
+   el footer— se dibuja arriba y salta cuando llegan los datos.
+
+   Los números son deliberadamente redondos y no una medición: el punto es
+   reservar de sobra, no acertar el alto final.
+
+     list      1250px — cubre 12 cards en 2 columnas y también el detalle,
+                        que se renderiza in-place sobre la misma URL.
+     carousel   400px — una fila de tarjetas y nada más.
+
+   ⚠️  Es una reserva INCONDICIONAL, no solo durante la carga. En un listado con
+   pocos resultados (p. ej. `?ma_brand=Volvo`, un solo auto) sobra espacio
+   vacío abajo. Se eligió así igual porque la alternativa —soltar la reserva
+   cuando aparece contenido, con `:has()`— la suelta cuando el plugin inyecta
+   su ESQUELETO, que es antes de que lleguen los datos del fetch: o sea que
+   reintroduce exactamente el salto que esto viene a arreglar. */
+.catalog[data-view='list'] {
+  --ma-reserve: 1250px;
+}
+
+.catalog[data-view='carousel'] {
+  --ma-reserve: 400px;
+}
+
+/* `width: 100%` y NO `100vw`: este div vive dentro de `.catalog__inner`, que
+   tiene `max-width: var(--container-wide)` y `padding-inline`. Con `100vw` se
+   saldría del contenedor centrado, y encima `100vw` incluye el ancho de la
+   scrollbar — o sea barra horizontal en toda la página. Un div de bloque ya
+   mide el 100% de su columna; esto solo lo deja explícito. */
+.catalog #MultiavisoContainer {
+  min-height: var(--ma-reserve);
+  width: 100%;
+}
+
+.catalog__inner {
+  width: 100%;
+  max-width: var(--container-wide);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* ─── Gutter del listado en mobile ──────────────────────────────────────────
+
+   El espacio lateral en un teléfono no lo daba UNA regla sino TRES sumadas:
+   nuestro `--gutter` (16px) más el padding que el plugin pone en
+   `#MultiavisoWrapper` (5px) y en `#ListWrapper` (10px en mobile) — ~31px por
+   lado sobre un viewport de ~390px. Con una sola columna eso es un 16% del
+   ancho gastado en aire, y lo paga la foto 16:10, que es el argumento de venta
+   de la card.
+
+   Baja a 8px. Las tres capas hay que atacarlas juntas: tocar solo `--gutter`
+   deja los 15px del plugin y el cambio se lee como que no pasó nada.
+
+   Por qué NO se toca el token `--gutter`: lo consumen `.container` y
+   `.container-wide` en base.css, o sea header, footer, heroes y todas las
+   páginas, y DESIGN.md lo fija en 24px / 16px mobile. Esto es una desviación
+   deliberada y LOCAL al listado, no un cambio de sistema.
+
+   `[data-view='list']` no es decorativo: el carrusel de destacados del Home
+   comparte `.catalog__inner`, y ahí el gutter tiene que seguir siendo el del
+   sitio — es una banda entre bandas, no el contenido de la página.
+
+   Dos consecuencias asumidas, no olvidos:
+     · El <PageHero> sigue en `.container` (16px), así que su texto y el borde
+       de las cards no alinean por 8px. El hero es tipografía y necesita el
+       margen; la grilla no.
+     · La hoja de filtros de §7 también mantiene los 16px del sitio, por la
+       misma razón: son labels y controles, no imágenes.
+
+   Lo que NO se pudo achicar: en 401-600px el plugin le pone a cada card un
+   margen de 1% por lado, y en mobile esos márgenes van con `!important` (ver
+   la tabla de §6). No se pelea contra eso — son ~4px y el ancho de card de ese
+   tramo sigue acompañando al margen del plugin, como manda esa tabla. */
+@media (max-width: 699px) {
+  .catalog[data-view='list'] .catalog__inner {
+    padding-inline: var(--space-2);
+  }
+
+  /* Las capas de padding que pone el plugin. Solo el eje horizontal: el
+     `padding-block` es el que separa la grilla de la barra de filtros y del
+     borde inferior, y ese ritmo está bien como está.
+
+     Van los cinco contenedores —los tres del listado y los dos del detalle—
+     porque /usados y la ficha de un vehículo son la misma URL (§6.4): si se
+     neutralizara solo el listado, el detalle quedaría con otro margen y pasar
+     de una vista a la otra se vería como un salto.
+
+     Gana por especificidad (`.catalog` + ID), no con `!important` — regla 1 de
+     la cabecera de este archivo. Si en el deploy sigue sobrando espacio, el
+     próximo paso es volver a leer la hoja del plugin: significaría que este
+     padding viene con `!important`, o que hay un contenedor más en la cadena
+     (candidato: el `<td>` de la tabla con la que maqueta). */
+  .catalog[data-view='list'] #MultiavisoWrapper,
+  .catalog[data-view='list'] #MultiavisoWrapper #ListContainer,
+  .catalog[data-view='list'] #MultiavisoWrapper #ListWrapper,
+  .catalog[data-view='list'] #MultiavisoWrapper #ItemContainer,
+  .catalog[data-view='list'] #MultiavisoWrapper #ItemWrapper {
+    padding-inline: 0;
+  }
+}
+
+/* --------------------------------------------------------- 2. box model ---- */
+
+/* base.css pone `box-sizing: border-box` global. El plugin fue maquetado sin
+   reset, o sea asumiendo content-box. Se lo devolvemos dentro de su territorio
+   — este es exactamente el problema por el que no usamos Tailwind. */
+.catalog #MultiavisoWrapper,
+.catalog #MultiavisoWrapper *,
+.catalog #MultiavisoWrapper *::before,
+.catalog #MultiavisoWrapper *::after {
+  box-sizing: content-box;
+}
+
+/* --------------------------------------------------------- 3. tipografía --- */
+
+/* El plugin carga Open Sans y Jost desde Google Fonts por su cuenta. No lo
+   podemos evitar (las pide en runtime), pero sí podemos no usarlas. */
+.catalog #MultiavisoWrapper,
+.catalog #MultiavisoWrapper input,
+.catalog #MultiavisoWrapper select,
+.catalog #MultiavisoWrapper textarea,
+.catalog #MultiavisoWrapper button {
+  font-family: var(--font-body);
+  color: var(--ma-text);
+}
+
+/* ------------------------------------------------------------- 4. links ---- */
+
+/* OVERRIDE OBLIGATORIO (§2.3, §6.3). El plugin trae su propio azul; si no se
+   pisa, conviven dos azules distintos en la misma pantalla. */
+.catalog #MultiavisoWrapper a {
+  color: var(--ma-link);
+  transition: color var(--dur) var(--ease);
+}
+
+.catalog #MultiavisoWrapper a:hover {
+  color: var(--ma-link-hover);
+}
+
+/* --------------------------------------------------- 5. card de vehículo --- */
+
+/* Objetivo: que `.item` termine visualmente igual a la card de §5.5.
+   Estructura: td#List > div > .item > .item-image > a[style=background-image]
+                                     > .item-title > a
+                                     > .item-subtitle > a
+                                     > .item-specs > a   "2025 | 6.300 km"
+                                     > .item-price > a   "USD 49.990"
+
+   ─── Por qué TODO cuelga de `#List` ───────────────────────────────────────
+   No es decorativo, es el segundo ID. Con `.catalog #MultiavisoWrapper
+   .item-title a` teníamos UN id; el plugin usa `#List` en su cadena y por lo
+   tanto DOS, y dos IDs ganan sin importar el orden de las hojas.
+
+   El síntoma era preciso: el fondo transparente de `.item` sí lo ganábamos
+   (esa regla ya tenía `#List`), pero los COLORES DE TEXTO no — el título, el
+   subtítulo y el precio salían en el gris oscuro del plugin sobre fondo
+   oscuro, ilegibles. En hover parecían arreglarse, y era peor: el plugin le
+   pone fondo blanco a la card, así que el mismo gris oscuro pasaba a leerse
+   sobre blanco.
+
+   Si algún día vuelve a perder, el próximo escalón es repetir el id
+   (`#MultiavisoWrapper#MultiavisoWrapper`), no `!important`. */
+
+.catalog #MultiavisoWrapper #List .item {
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-none);
+  box-shadow: none;
+  /* El plugin deja 3px abajo, que con SU precio de 23px y su card de 238px
+     alcanzaba. Con la card a ~630px y el precio a 34px el número quedaba
+     pegado al borde. 24px le da aire sin separar la card de la siguiente —
+     el margen inferior de 20px que trae el plugin sigue siendo lo que separa
+     una fila de otra. */
+  padding-bottom: var(--space-6);
+}
+
+/* La imagen es un background inline del plugin. No podemos cambiar la fuente,
+   solo el encuadre. El overflow:hidden va en el padre para que el scale del
+   hover se recorte contra la caja y la card no se mueva (§5.5). */
+/* El `aspect-ratio` va acá, en el DIV, y NO en el <a> de adentro.
+   El plugin fija `height: 150px` en este div (y 150/165/220/250px según
+   breakpoint). Un `height` explícito le gana siempre al `aspect-ratio`, así
+   que ponerlo en el hijo —que hereda `height: 100%`— no hacía nada: la foto
+   quedaba clavada en 150px de alto mientras la card crecía a ~630px de ancho,
+   o sea una franja de 4:1.
+
+   `height: auto` es lo que habilita el aspect-ratio. La regla gana en todos
+   los breakpoints del plugin sin repetirla: la nuestra tiene una clase más
+   (`.catalog`) y las media queries no cambian la especificidad. */
+.catalog #MultiavisoWrapper #List .item .item-image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius-none);
+}
+
+.catalog #MultiavisoWrapper #List .item .item-image a {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--radius-none);
+  transition: transform var(--dur) var(--ease);
+}
+
+/* El plugin le pone fondo BLANCO a la card en hover. Sobre superficie oscura
+   eso es un flash de blanco por cada card que el mouse toca — y encima es lo
+   que hacía parecer que el texto "se arreglaba" al pasar por encima.
+   §4 es explícito: en hover la card no se mueve ni cambia, solo escala la
+   foto. */
+.catalog #MultiavisoWrapper #List .item:hover,
+.catalog #MultiavisoWrapper #List .item:focus-within {
+  background: transparent;
+  box-shadow: none;
+}
+
+.catalog #MultiavisoWrapper #List .item:hover .item-image a {
+  transform: scale(1.03);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog #MultiavisoWrapper #List .item:hover .item-image a {
+    transform: none;
+  }
+}
+
+.catalog #MultiavisoWrapper #List .item .item-title,
+.catalog #MultiavisoWrapper #List .item .item-title a {
+  font-family: var(--font-body);
+  font-size: var(--fs-card);
+  line-height: var(--lh-card);
+  font-weight: 600;
+  color: var(--ma-text);
+}
+
+.catalog #MultiavisoWrapper #List .item .item-subtitle,
+.catalog #MultiavisoWrapper #List .item .item-subtitle a {
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  font-weight: 400;
+  color: var(--ma-text-muted);
+}
+
+/* "2025 | 6.300 km" — petróleo, que acá es rol de énfasis, no de acción */
+.catalog #MultiavisoWrapper #List .item .item-specs,
+.catalog #MultiavisoWrapper #List .item .item-specs a,
+.catalog #MultiavisoWrapper #List .item .item-specs span {
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
+  color: var(--brand-bright);
+}
+
+.catalog #MultiavisoWrapper #List .item .item-price,
+.catalog #MultiavisoWrapper #List .item .item-price a {
+  font-family: var(--font-display);
+  font-size: var(--ma-price-size);
+  line-height: 1.15;
+  font-weight: 500;
+  color: var(--ma-text);
+  /* Cifras de ancho fijo, para que una columna de precios quede alineada
+     dígito con dígito.
+
+     Honestidad sobre el impacto: se comparó renderizando la misma columna con
+     y sin, y con Space Grotesk la diferencia es MÍNIMA — sus cifras ya son
+     casi de ancho fijo de fábrica. Se deja igual porque cuesta una línea y
+     garantiza la alineación si algún día cambia la familia display (con Sora,
+     por ejemplo, el efecto sí se notaba). No es el gran truco que parece. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------ 5b. la card del CARRUSEL ------- */
+
+/* El carrusel del Home NO reusa `.item`: el plugin lo maqueta con
+   `.CarouselWrapper .carousel-item`. Toda la sección 5 le pasaba por al lado,
+   así que el carrusel venía con el estilo crudo del plugin —fondo blanco,
+   texto negro, su propio azul— sobre nuestra banda oscura.
+
+   Era el supuesto que la sesión 1 anotó como "sin verificar": que el modo
+   CAROUSEL reutilizaba las clases del LIST. No las reutiliza.
+
+   Mismas reglas que la card del listado, con la cadena del carrusel. */
+
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item {
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-none);
+  box-shadow: none;
+  /* Mismo criterio que la card del listado. El plugin deja 5px acá. */
+  padding-bottom: var(--space-6);
+}
+
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item:hover {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ─── Los bullets de paginación ───────────────────────────────────────────────
+   Abajo de 767px el plugin apaga las flechas y muestra bullets (lo decide él,
+   no nosotros: `s = jQuery(window).width() <= 767` en plugin.js). Son los de
+   Swiper sin tocar: `background: #000; opacity: .2` en reposo y el celeste
+   #007aff de Swiper en el activo. Sobre nuestra banda oscura los inactivos
+   quedan negro sobre negro — invisibles.
+
+   La cadena va por `.CarouselWrapper` y NO por el id: el plugin le pone al
+   contenedor un id dinámico, `"carousel_" + Date.now()`, así que la regla
+   `#MultiavisoCarouselContainer .swiper-pagination` de su propia hoja apunta a
+   un elemento que ya no existe. Cualquier override que dependa de ese id es
+   letra muerta.
+
+   1 ID + 3 clases contra la clase suelta de Swiper: gana sin `!important`. */
+
+.catalog #MultiavisoWrapper .CarouselWrapper .swiper-pagination-bullet {
+  background: var(--ma-text);
+  opacity: 0.28;
+  transition: opacity var(--dur) var(--ease);
+}
+
+.catalog #MultiavisoWrapper .CarouselWrapper .swiper-pagination-bullet-active {
+  background: var(--ma-link);
+  opacity: 1;
+}
+
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+}
+
+/* Acá el plugin NO usa `height`: usa el truco viejo de `height: 0` +
+   `padding-bottom: 75%` para forzar 4:3. Hay que neutralizar las dos cosas o
+   el padding se suma al alto que ya da el aspect-ratio del padre. */
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-image a {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding-bottom: 0;
+  background-size: cover;
+  background-position: center;
+  transition: transform var(--dur) var(--ease);
+}
+
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item:hover .item-image a {
+  transform: scale(1.03);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog #MultiavisoWrapper .CarouselWrapper .carousel-item:hover .item-image a {
+    transform: none;
+  }
+}
+
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-title,
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-title a {
+  font-family: var(--font-body);
+  font-size: var(--fs-card);
+  line-height: var(--lh-card);
+  font-weight: 600;
+  color: var(--ma-text);
+}
+
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-subtitle,
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-subtitle a {
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  font-weight: 400;
+  color: var(--ma-text-muted);
+}
+
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-specs,
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-specs a,
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-specs span {
+  font-size: var(--fs-label);
+  line-height: var(--lh-label);
+  color: var(--brand-bright);
+}
+
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-price,
+.catalog #MultiavisoWrapper .CarouselWrapper .carousel-item .item-price a {
+  font-family: var(--font-display);
+  font-size: var(--ma-price-size);
+  line-height: 1.15;
+  font-weight: 500;
+  color: var(--ma-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------- 6. la grilla ---- */
+
+/* DOS columnas, como premiumcars — que usa este mismo plugin y lo consigue
+   igual: pisando el ancho de `.item`.
+
+   ─── Los números salen de la hoja del plugin, no de una estimación ────────
+   https://automotora.multiaviso.com/Styles/plugin-style.css?v=7
+
+       #List .item        float: left; width: 238px; margin: 0 10px 20px 10px
+       #List .item-image  width: 236px
+
+   Son anchos FIJOS en px, y por eso entran 4 por fila. El margen es 10px por
+   lado, o sea 20px por card — ese es el número que una pasada anterior había
+   adivinado como "22px", y por no poder confirmarlo se descartó la regla
+   entera. Ahora está leído de la fuente.
+
+   `box-sizing` adentro del wrapper es content-box (sección 2), así que `width`
+   es el ancho del CONTENIDO y los márgenes se suman aparte:
+   `calc(50% - 20px)` + 20px de margen = 50% exacto. Dos por fila.
+
+   ─── Los breakpoints se acomodan a los del plugin, no pelean contra ellos ──
+   El plugin cambia márgenes con `!important` en mobile, y contra un
+   `!important` solo gana otro. En vez de eso, cada tramo usa el ancho que
+   corresponde a los márgenes que el plugin ya puso ahí:
+
+       ≥ 701px    nuestro   calc(50% - 20px)   márgenes 10px  → 2 columnas
+       601-700px  del plugin        48%        márgenes 1%    → 2 columnas
+       401-600px  nuestro           98%        márgenes 1%    → 1 columna
+       ≤ 400px    nuestro          100%        márgenes 0     → 1 columna
+
+   Así no hace falta `!important` en ningún tramo. Si algún día el plugin
+   cambia esos márgenes, ESTA TABLA es lo que hay que volver a leer. */
+
+.catalog #MultiavisoWrapper #List .item {
+  width: calc(50% - 20px);
+  /* `height: auto` NO es cosmético: el plugin fija `height: 280px` junto con
+     `overflow: hidden`. Ese 280 está calculado para su foto de 150px más el
+     texto. Con la foto a 16:10 sobre una card de ~630px, la imagen sola mide
+     ~394px — más que la card entera— y el overflow se comía título, subtítulo,
+     specs y precio.
+
+     Es el mismo patrón que ya apareció cuatro veces: el plugin dimensiona en
+     píxeles fijos para SU layout, y cada vez que cambiamos un ancho hay que ir
+     a buscar qué alto fijo dependía de él. */
+  height: auto;
+}
+
+/* Una columna. El ancho acompaña los márgenes que el plugin fija en cada
+   tramo — ver la tabla de arriba. */
+@media (max-width: 600px) {
+  .catalog #MultiavisoWrapper #List .item {
+    width: 98%;
+  }
+}
+
+@media (max-width: 400px) {
+  .catalog #MultiavisoWrapper #List .item {
+    width: 100%;
+  }
+}
+
+/* El plugin dibuja un borde alrededor de sus contenedores que en el sitio
+   queda como una caja flotando dentro de la banda. La separación acá la da la
+   banda, no un recuadro (§1, §4). */
+.catalog #MultiavisoWrapper #ListContainer,
+.catalog #MultiavisoWrapper #ListWrapper,
+.catalog #MultiavisoWrapper #ItemContainer,
+.catalog #MultiavisoWrapper #ItemWrapper {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------ 7. filtros --- */
+
+.catalog #MultiavisoWrapper #Filters {
+  background: transparent;
+}
+
+.catalog #MultiavisoWrapper .filter-block {
+  border-bottom: 1px solid var(--ma-rule);
+}
+
+/* El label va en `--ma-text`, no en `--ma-text-muted`: es el título del grupo
+   de filtros, no un metadato. En #B0B0B0 sobre banda oscura competía con los
+   propios items del filtro (que sí son muted) y el grupo no se leía como
+   encabezado. El contraste lo aporta el peso y las mayúsculas, no el gris. */
+.catalog #MultiavisoWrapper .filter-block .filter-block-label {
+  font-size: var(--fs-eyebrow);
+  font-weight: 500;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ma-text);
+}
+
+/* Filtros como texto plano, con el contador en faint — el patrón de
+   premiumcars (§6.3). */
+.catalog #MultiavisoWrapper .filter-block .filter-block-item {
+  font-size: var(--fs-body-sm);
+  color: var(--ma-text-muted);
+}
+
+.catalog #MultiavisoWrapper .filter-block .filter-block-item:hover {
+  color: var(--ma-link);
+}
+
+/* El contador va dentro del <a>, como `<span>(18)</span>`. §6.3 lo pide en el
+   tono más apagado: es un dato de apoyo, no parte del nombre del filtro. */
+.catalog #MultiavisoWrapper .filter-block .filter-block-item > span {
+  color: var(--ma-text-faint);
+}
+
+/* "Más opciones" — es un <a> sin href, así que hereda mal el color de link. */
+.catalog #MultiavisoWrapper .filter-block .filter-block-more {
+  font-size: var(--fs-body-sm);
+  color: var(--ma-link);
+  cursor: pointer;
+}
+
+.catalog #MultiavisoWrapper #Counts,
+.catalog #MultiavisoWrapper #PoweredBy {
+  font-size: var(--fs-label);
+  color: var(--ma-text-faint);
+}
+
+/* Filtro activo: pill, la única otra excepción al radio 0 junto con el FAB */
+.catalog #MultiavisoWrapper #CurrentFilters .current-filter {
+  border-radius: var(--radius-full);
+  background: var(--ma-bg-raised);
+  color: var(--ma-text);
+  font-size: var(--fs-label);
+}
+
+/* ─── El acordeón de filtros ─────────────────────────────────────────────── */
+
+/* Acá NO hace falta forzar nada en desktop. Leído de la hoja del plugin:
+
+     (global)              #FiltersTitle   display: none
+     @media (min-width:700px)  #FilterContent  display: block !important
+     @media (max-width:700px)  #FiltersTitle   display: block; color: #000
+
+   O sea que el plugin ya muestra el título solo abajo de 700px y ya fuerza
+   los filtros abiertos arriba. Había un bloque nuestro duplicando eso en
+   900px, con tres `!important` — se sacó: duplicar una regla ajena con OTRO
+   breakpoint es sembrar una discrepancia entre 700 y 900px.
+
+   Lo que sí hay que hacer es lo que el plugin no hace: el color. */
+
+/* El título del acordeón viene en negro, o sea invisible sobre banda oscura.
+   Solo se ve en mobile, que es por lo que tardó en aparecer. */
+.catalog #MultiavisoWrapper #FiltersTitle {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ma-text);
+}
+
+.catalog #MultiavisoWrapper #FiltersTitle .fa {
+  color: var(--ma-link);
+}
+
+/* ─── Mobile: los filtros son una hoja modal, no un acordeón ─────────────── */
+
+/* DESIGN.md §8 especificaba "en mobile dejar que el acordeón funcione". Se
+   cambió a pedido, y §8 se actualizó en la misma pasada: con ocho bloques de
+   filtro el acordeón abierto mide varias pantallas y empuja el listado entero
+   fuera de vista, así que después de elegir había que scrollear a ciegas para
+   volver a los resultados. La hoja fija los deja donde estaban.
+
+   LO QUE ESTA SECCIÓN **NO** HACE, y es a propósito:
+
+   No toca el toggle. `#FiltersTitle` sigue siendo el trigger del plugin y
+   `#FilterContent` sigue abriéndose con el `display: block` INLINE que escribe
+   jQuery — que le gana a cualquier regla de acá. Por eso no hay un solo
+   `!important` en toda la sección: no estamos peleando el estado, solo
+   reposicionando el panel. El chrome (backdrop, barra superior, botón "Ver
+   resultados") es markup NUESTRO, vive en MultiavisoCatalog.astro FUERA de
+   `#MultiavisoContainer`, y cierra despachando un click sobre `#FiltersTitle`.
+   O sea: una sola fuente de verdad, y sigue siendo la del plugin.
+
+   El breakpoint es 699 y no 899 a propósito: complementa el `min-width: 700`
+   del plugin sin dejar un hueco ni pisarlo. Es el mismo número que ya usaba la
+   regla de "arranca cerrado" — no se introduce un tercer breakpoint. */
+@media (max-width: 699px) {
+  .catalog {
+    /* Alto de las dos barras fijas. Viven acá porque `#FilterContent` las
+       necesita para calcular su `top` / `bottom` y el chrome para su altura:
+       un solo número, dos consumidores. */
+    --ma-sheet-head: 56px;
+    --ma-sheet-foot: calc(72px + env(safe-area-inset-bottom, 0px));
+
+    /* La hoja no es full-screen: ocupa el 80% de abajo y deja ver el listado
+       atenuado arriba, para que se lea como una capa sobre los resultados y no
+       como otra página. `svh` y no `vh` por la barra de direcciones móvil —
+       mismo criterio que el `.hero` (§5.1). */
+    --ma-sheet-h: 80svh;
+  }
+
+  /* El plugin dibuja un filete #dedcdd arriba y abajo del `td#Filters`, que
+     sobre banda oscura sale como una línea gris clara. Con el trigger ya
+     estilado como botón, el filete es redundante. */
+  .catalog #MultiavisoWrapper #Filters {
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+  }
+
+  /* El trigger, como botón a todo el ancho — el patrón "Filtros" de ML. */
+  .catalog #MultiavisoWrapper #FiltersTitle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    margin: var(--space-4) 0;
+    padding: var(--space-4) var(--space-6);
+    border: 1px solid var(--ma-rule);
+    border-radius: var(--radius-sm);
+  }
+
+  /* La hoja.
+
+     Ningún ancestro crea containing block — `#MultiavisoWrapper` y
+     `#ListWrapper` son `position: relative` SIN `z-index`, y no hay `transform`
+     / `filter` / `contain` en la cadena —, así que esto se ancla al viewport.
+     Y por ser `fixed` escapa el `overflow: auto` de `#ListWrapper`, que si no
+     lo recortaría. Las dos cosas se verificaron leyendo la hoja del plugin
+     ANTES de escribir esto. Si alguna deja de ser cierta el enfoque entero
+     cambia, y no se arregla con más CSS.
+
+     El `display: none` es la regla vieja y sigue haciendo lo mismo: abajo de
+     700px el plugin no declara nada sobre `#FilterContent`, y sin esto el div
+     renderiza abierto hasta que corre su JS. */
+  .catalog #MultiavisoWrapper #FilterContent {
+    display: none;
+
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: var(--ma-sheet-foot);
+    left: 0;
+    /* Alto explícito en vez de `top` + `bottom`, por dos razones. Una: evita
+       tener que restar de `100svh`. Dos, la importante: jQuery escribe `height`
+       INLINE mientras anima, y con la caja anclada por `bottom` eso la hace
+       crecer HACIA ARRIBA — o sea que la animación del plugin se lee como una
+       hoja que sube desde el borde inferior, gratis. Al terminar, jQuery saca
+       el height inline y vuelve a valer este calc. */
+    height: calc(var(--ma-sheet-h) - var(--ma-sheet-head) - var(--ma-sheet-foot));
+    z-index: var(--z-filters);
+
+    /* `!important` acá NO es pereza: es el caso que la regla 2 de la cabecera
+       de este archivo reserva. jQuery deja `overflow: hidden` INLINE en
+       `#FilterContent` después de animar, y lo inline le gana a cualquier hoja
+       normal — por eso el contenido no scrolleaba y los últimos bloques de
+       filtro quedaban cortados. Solo el eje Y: el X sigue en hidden, que es lo
+       que queremos. */
+    overflow-y: auto !important;
+    /* Sin `-webkit-overflow-scrolling: touch`: está obsoleto desde iOS 13 (el
+       momentum ya es nativo) y es lo que hacía que el background de este
+       contenedor se pintara junto al contenido durante el rebote. */
+    /* que el scroll de la hoja no arrastre la página de atrás */
+    overscroll-behavior: contain;
+
+    background: var(--ma-bg-raised);
+    padding-inline: var(--gutter);
+    padding-bottom: var(--space-8);
+    /* el `td#Filters` es `text-align: center` en la hoja del plugin */
+    text-align: left;
+  }
+
+  /* ─── Nuestro chrome ─────────────────────────────────────────────────── */
+
+  /* La clase la pone nuestro script en <html> cuando detecta que el panel quedó
+     visible. El estado NO se lee del string del estilo inline sino de
+     `getComputedStyle`, así funciona sea cual sea el mecanismo del plugin. */
+  .ma-filters-open .ma-sheet {
+    display: block;
+  }
+
+  /* Orden de capas, de atrás para adelante:
+       -2  backdrop          atenúa la página
+       -1  __surface         fondo opaco de la hoja (no scrollea)
+        0  #FilterContent    el panel del plugin, scrolleable
+       +1  __head / __foot   chrome */
+  .ma-sheet__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-filters) - 2);
+    width: 100%;
+    border: 0;
+    padding: 0;
+    background: rgb(0 0 0 / 0.6);
+    cursor: pointer;
+  }
+
+  /* El fondo de la hoja NO puede vivir en `#FilterContent`: ese es el
+     contenedor que scrollea, y en el rebote de iOS su background se pinta
+     junto con el contenido — al pasarse del final aparecía el listado de
+     atrás. Acá va una caja fija, del alto exacto de la hoja, que no scrollea
+     nunca. Cubre también el área de las barras: no importa, ellas van encima
+     y opacas.
+
+     Tampoco lleva `pointer-events: none`: queda enteramente tapada por el
+     panel y las barras, y si algún tap llegara igual, que no haga nada es
+     mejor que que se cuele al backdrop y cierre la hoja de más. */
+  .ma-sheet__surface {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: var(--ma-sheet-h);
+    z-index: calc(var(--z-filters) - 1);
+    background: var(--ma-bg-raised);
+  }
+
+  .ma-sheet__head,
+  .ma-sheet__foot {
+    position: fixed;
+    right: 0;
+    left: 0;
+    /* por encima de la hoja: son chrome, no contenido scrolleable */
+    z-index: calc(var(--z-filters) + 1);
+    display: flex;
+    align-items: center;
+    /* Elevada, no `--ma-bg`: sobre el backdrop al 60% el listado atenuado queda
+       casi del mismo negro que `--surface-dark`, y el borde de la hoja
+       desaparecía. `--ma-bg-raised` (#171717) la separa. */
+    background: var(--ma-bg-raised);
+    padding-inline: var(--gutter);
+  }
+
+  /* Anclada por abajo, no por arriba: así el 80% se mide desde el borde
+     inferior de la pantalla sin necesitar `100svh` en un `calc`. */
+  .ma-sheet__head {
+    top: auto;
+    bottom: calc(var(--ma-sheet-h) - var(--ma-sheet-head));
+    height: var(--ma-sheet-head);
+    justify-content: space-between;
+    border-top: 1px solid var(--ma-rule);
+    border-bottom: 1px solid var(--ma-rule);
+  }
+
+  .ma-sheet__foot {
+    bottom: 0;
+    height: var(--ma-sheet-foot);
+    /* el alto ya incluye el safe area; acá se lo saca del área de contenido */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-top: 1px solid var(--ma-rule);
+  }
+
+  .ma-sheet__title {
+    font-family: var(--font-body);
+    font-size: var(--fs-body);
+    font-weight: 600;
+    color: var(--ma-text);
+  }
+
+  .ma-sheet__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* 44px es el mínimo táctil; el margen negativo lo alinea ópticamente con
+       el gutter sin perder área de tap */
+    width: 44px;
+    height: 44px;
+    margin-right: calc(var(--space-3) * -1);
+    border: 0;
+    background: none;
+    color: var(--ma-text);
+    cursor: pointer;
+  }
+
+  .ma-sheet__apply {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: var(--space-4) var(--space-6);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius-sm);
+    background: var(--brand);
+    color: #ffffff;
+    font-family: var(--font-body);
+    font-size: var(--fs-button);
+    line-height: var(--lh-button);
+    letter-spacing: var(--tracking-button);
+    font-weight: 500;
+    cursor: pointer;
+  }
+}
+
+/* Fuera del media query: en desktop el chrome no existe. A `#FilterContent` lo
+   fuerza abierto el propio plugin con `display: block !important` arriba de
+   700px, así que acá no hay nada que deshacer. */
+.ma-sheet {
+  display: none;
+}
+
+/* -------------------------------------------------------- 8. paginación ---- */
+
+.catalog #MultiavisoWrapper #Pagination a {
+  color: var(--ma-text-muted);
+  border-radius: var(--radius-none);
+}
+
+.catalog #MultiavisoWrapper #Pagination a.current {
+  color: var(--ma-link);
+  font-weight: 500;
+}
+
+/* ----------------------------------------------- 9. detalle del vehículo --- */
+
+/* Estructura REAL, capturada de una URL con ?ma_carid=:
+     #ItemWrapper > #ItemContainer
+       a#Multiaviso-back                    "Volver al Listado"
+       #ItemTitleMobileWrpr > h1#ItemTitleMobile.ItemTitle
+       #MediaContainer                      swiper de fotos + thumbs
+       #InfoContainer
+         h1#ItemTitle.ItemTitle
+         #ItemYearKM                        "2025 | 6.300 km"
+         #ItemPrice                         "USD 49.990"
+         #ItemStatus > img                  estrellas
+         .contact-item                      #ContactAddress/#ContactPhone/#ContactSchedule
+         a#ContactNow                       ← el CTA
+         #Share
+       #SpecsContainer > .specs
+         .specs-title / .specs-content
+         .spec-column > .spec-general > .spec-label + .spec-value
+         span.spec
+       #ContactTable                        inputs .ContactField + input#BtnMASubmit */
+
+.catalog #MultiavisoWrapper #Multiaviso-back {
+  display: inline-block;
+  font-size: var(--fs-body-sm);
+  color: var(--ma-link);
+}
+
+.catalog #MultiavisoWrapper .ItemTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  font-weight: 400;
+  color: var(--ma-text);
+}
+
+/* "2025 | 6.300 km" — el mismo tratamiento que en la card del listado (§5.5). */
+.catalog #MultiavisoWrapper #ItemYearKM {
+  font-size: var(--fs-body-sm);
+  color: var(--ma-link);
+}
+
+.catalog #MultiavisoWrapper #ItemPrice {
+  font-family: var(--font-display);
+  font-size: var(--fs-price);
+  line-height: var(--lh-price);
+  font-weight: 500;
+  color: var(--ma-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.catalog #MultiavisoWrapper .contact-item {
+  font-size: var(--fs-body-sm);
+  color: var(--ma-text-muted);
+}
+
+/* OVERRIDE OBLIGATORIO (§2.1, §6.3): "Contactar ahora" es el CTA de conversión
+   del catálogo, así que va con el verde de acción y no con el azul del plugin.
+
+   El selector es `#ContactNow` — el que había antes (`.btn-contact`,
+   `#BtnContact`) no existía en el DOM y por eso el botón seguía azul. */
+.catalog #MultiavisoWrapper a#ContactNow {
+  background: var(--whatsapp);
+  border-color: var(--whatsapp);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--fs-button);
+  font-weight: 500;
+  letter-spacing: var(--tracking-button);
+  text-transform: none;
+}
+
+.catalog #MultiavisoWrapper a#ContactNow:hover {
+  background: var(--whatsapp-hover);
+  border-color: var(--whatsapp-hover);
+  color: #fff;
+}
+
+/* ─── Ficha técnica ─────────────────────────────────────────────────────── */
+
+.catalog #MultiavisoWrapper .specs-title {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ma-text);
+  border-color: var(--ma-rule);
+}
+
+.catalog #MultiavisoWrapper .spec-label {
+  font-size: var(--fs-label);
+  color: var(--ma-text-muted);
+}
+
+/* `.spec-general` en la cadena NO es de adorno: el plugin usa
+   `#MultiavisoWrapper .spec-general .spec-value { color: #111 }`, que empataba
+   con el nuestro en (1,2,0) y ganaba por cargar después. Los valores de la
+   ficha —precio, año, marca— salían casi negros sobre fondo oscuro.
+   `span.spec` de Seguridad no tenía el problema porque el elemento le suma un
+   punto y ya ganaba. */
+.catalog #MultiavisoWrapper .spec-general .spec-value,
+.catalog #MultiavisoWrapper span.spec {
+  font-size: var(--fs-body-sm);
+  color: var(--ma-text);
+}
+
+/* ─── El formulario del detalle ─────────────────────────────────────────── */
+
+/* NO usa §5.4 (label persistente, solo línea inferior): el markup es del
+   plugin, los campos son placeholder-only y no hay <label> que mostrar. Se lo
+   deja como está y solo se lo alinea al sistema — meterle el tratamiento de
+   nuestros formularios acá sería reconstruir markup ajeno.
+
+   ⚠️  `#SpecsContact` en la cadena es OBLIGATORIO. El plugin escribe
+   `#MultiavisoWrapper #SpecsContact input[type=text] { background: #eaeaea }`
+   — DOS ids. Nuestra regla colgaba solo de `#MultiavisoWrapper`, o sea uno, y
+   los ids dominan sobre las clases sin importar cuántas se apilen: el gris
+   claro seguía ganando y el fondo transparente nunca se aplicaba. Es el mismo
+   empate de siempre, pero acá perdíamos por un ID, no por una clase.
+
+   ⚠️  Este formulario NO ENVÍA: reCAPTCHA da `Invalid domain` para
+   bielcar.vercel.app. Es el único canal de leads del catálogo y depende de
+   Madfes, no de CSS. Ver README. */
+.catalog #MultiavisoWrapper #SpecsContact .ContactField {
+  font-family: var(--font-body);
+  font-size: var(--fs-body-sm);
+  border-radius: var(--radius-none);
+}
+
+/* `input[type=button]`, no `submit` — el selector viejo no matcheaba. */
+.catalog #MultiavisoWrapper input#BtnMASubmit,
+.catalog #MultiavisoWrapper #BtnMultiavisoSubmitCaptcha {
+  background: var(--whatsapp);
+  border-color: var(--whatsapp);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--fs-button);
+  font-weight: 500;
+  letter-spacing: var(--tracking-button);
+  text-transform: none;
+}
+
+.catalog #MultiavisoWrapper input#BtnMASubmit:hover,
+.catalog #MultiavisoWrapper #BtnMultiavisoSubmitCaptcha:hover {
+  background: var(--whatsapp-hover);
+  border-color: var(--whatsapp-hover);
+}
+
+/* ─── La descripción viene con estilos inline del panel ─────────────────── */
+
+/* El texto que Sebastián carga en Multiaviso trae `style=` propios: un h1 en
+   #11437f, tamaños en pt, links en #4d90fe. Es contenido, no markup del
+   plugin, así que NO se pisa a la fuerza: si mañana lo edita, gana lo que
+   escriba. Lo único que se ajusta es la medida de lectura, que sin tope llega
+   a renglones de más de 120 caracteres a ancho completo. */
+.catalog #MultiavisoWrapper #SpecsDescription .specs-content {
+  max-width: 90ch;
+}
+
+/* ------------------------------- 9b. lo que solo duele en oscuro ----------- */
+
+/* Estos nodos el plugin los pinta asumiendo fondo blanco. En superficie clara
+   coinciden y no se notan; en oscura son los que rompen la página. */
+
+/* Los campos del formulario del detalle son cajas blancas sólidas.
+
+   Van TRANSPARENTES con un borde fino, no con un gris propio: así se apoyan
+   en la banda como el resto del sitio en vez de leerse como cajas flotando
+   (§1, §4 — la separación es contraste de banda, no elevación). */
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsContact .ContactField {
+  background: transparent;
+  border: 1px solid var(--rule-on-dark);
+  color: var(--text-on-dark);
+}
+
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsContact .ContactField::placeholder {
+  color: var(--text-on-dark-faint);
+}
+
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsContact .ContactField:focus {
+  border-color: var(--brand);
+  outline: none;
+}
+
+/* ─── El autofill de Chrome, que es el que rompe los forms oscuros ───────── */
+
+/* Chrome pinta los campos autocompletados con un fondo propio y lo hace con
+   una regla interna que NINGÚN `background` puede pisar. El único camino es
+   tapar el fondo con una sombra interior del color que queremos, y forzar el
+   color del texto con `-webkit-text-fill-color` — `color` a secas tampoco le
+   gana.
+
+   El `transition-delay` gigante es el truco conocido para que la sombra no se
+   desvanezca: Chrome anima el fondo del autofill y con un delay largo nunca
+   llega a mostrarse.
+
+   Este es probablemente el motivo por el que el formulario "se veía raro"
+   aunque la regla de `.ContactField` estuviera aplicando: basta con que el
+   navegador haya autocompletado nombre o teléfono. */
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsContact .ContactField:-webkit-autofill,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsContact .ContactField:-webkit-autofill:hover,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsContact .ContactField:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-dark) inset;
+  box-shadow: 0 0 0 1000px var(--surface-dark) inset;
+  -webkit-text-fill-color: var(--text-on-dark);
+  caret-color: var(--text-on-dark);
+  transition: background-color 100000s ease-in-out 0s;
+}
+
+/* Las cajas de la ficha técnica y el popup de orden traen fondo y borde
+   claros. */
+.catalog[data-surface='dark'] #MultiavisoWrapper .specs,
+.catalog[data-surface='dark'] #MultiavisoWrapper .specs-title,
+.catalog[data-surface='dark'] #MultiavisoWrapper .specs-content,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SortDisplay,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SortPopup,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SortPopupInner {
+  background: transparent;
+  border-color: var(--rule-on-dark);
+  color: var(--text-on-dark);
+}
+
+/* El popup de orden SÍ necesita fondo propio: se despliega encima del listado
+   y transparente sería ilegible. */
+.catalog[data-surface='dark'] #MultiavisoWrapper #SortPopup {
+  background: var(--surface-dark-raised);
+}
+
+/* ─── La descripción: acá SÍ va !important, y es el caso que §6.3 autoriza ─ */
+
+/* El texto que Sebastián carga en el panel viene con `style=` inline: un h1 en
+   #11437f y links en #4d90fe. Sobre blanco funcionan; sobre nuestro fondo
+   oscuro el azul marino del h1 es prácticamente ilegible.
+   §6.3: "Reservar `!important` para casos donde el plugin usa estilos inline."
+   Es exactamente esto — sin `!important` un atributo `style` no se pisa.
+
+   ⚠️  Ojo con lo que esto implica: le estamos pisando a Sebastián una decisión
+   de color que él tomó en su panel. Se hace porque la eligió para fondo claro
+   y acá no se lee, no porque esté mal. Si algún día el catálogo vuelve a
+   superficie clara, este bloque hay que sacarlo o le vamos a estar pisando
+   colores que sí funcionaban. */
+/* El cuerpo va en `--text-on-dark`, no en `-muted`. Fue muted una vuelta, por
+   la regla general de que la prosa larga no va en blanco pleno — pero acá esa
+   regla no aplica: no es prosa nuestra maquetada a nuestro ancho, es la ficha
+   del vehículo, con listas de equipamiento larguísimas separadas por viñetas y
+   a 12pt. En #B0B0B0 se leía apagada, y es el contenido por el que la persona
+   entró a la página. */
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsDescription,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsDescription p,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsDescription span,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsDescription div {
+  color: var(--text-on-dark) !important;
+}
+
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsDescription h1,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsDescription h2,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsDescription h3,
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsDescription strong {
+  color: var(--text-on-dark) !important;
+}
+
+.catalog[data-surface='dark'] #MultiavisoWrapper #SpecsDescription a {
+  color: var(--brand-bright) !important;
+}
+
+/* El crédito de Multiaviso es un PNG gris pensado para fondo blanco. */
+.catalog[data-surface='dark'] #MultiavisoWrapper #PoweredBy img {
+  filter: brightness(0) invert(1);
+  opacity: 0.5;
+}
+
+/* ---------------------------------- 9c. flechas del carrusel de fotos ----- */
+
+/* El plugin las dibuja con PNGs propios —`arrow-left-sm.png` / `-right-sm.png`—
+   que son flechas OSCURAS sobre transparente. Sobre fondo claro se ven; sobre
+   el nuestro desaparecen. No es un problema de color de texto: es una imagen.
+
+   Se reemplaza el background-image por un chevron SVG inline. Dos motivos para
+   dibujarlo en vez de filtrar el PNG del plugin con `brightness(0) invert(1)`:
+   no dependemos de un archivo en su servidor, y podemos darle CUALQUIER color
+   —el filtro solo sabe llevar a blanco o a negro.
+
+   El viewBox es 15x28, igual que la caja que el plugin ya reserva, así que el
+   chevron no se deforma y no hay que tocar el `margin-top: -14px` con el que
+   los centra.
+
+   ⚠️  El `#` del color va escrito como `%23` en el data URI, UNA sola vez. La
+   primera versión de esto lo tenía doble-encodeado (`%2523`), el browser
+   decodificaba a `%23FFFFFF` —que no es un color— y el chevron salía sin
+   trazo: exactamente igual de invisible que el PNG que veníamos a reemplazar.
+   Si tocás estos data URI, renderizalos antes de dar por hecho que andan. */
+
+.catalog #MultiavisoWrapper .thumbs-container .swiper-button-prev {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2015%2028%27%20fill%3D%27none%27%20stroke%3D%27%23FFFFFF%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M11%207l-7%207%207%207%27%2F%3E%3C%2Fsvg%3E");
+}
+
+.catalog #MultiavisoWrapper .thumbs-container .swiper-button-next {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2015%2028%27%20fill%3D%27none%27%20stroke%3D%27%23FFFFFF%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M4%207l7%207-7%207%27%2F%3E%3C%2Fsvg%3E");
+}
+
+/* Hover al petróleo, el mismo salto que hacen los links del sitio. */
+.catalog #MultiavisoWrapper .thumbs-container .swiper-button-prev:hover {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2015%2028%27%20fill%3D%27none%27%20stroke%3D%27%231F9CBF%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M11%207l-7%207%207%207%27%2F%3E%3C%2Fsvg%3E");
+}
+
+.catalog #MultiavisoWrapper .thumbs-container .swiper-button-next:hover {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2015%2028%27%20fill%3D%27none%27%20stroke%3D%27%231F9CBF%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M4%207l7%207-7%207%27%2F%3E%3C%2Fsvg%3E");
+}
+
+/* ------------------------------------------------------- 10. PoweredBy ----- */
+
+/* Es el crédito de Multiaviso. NO ocultarlo por decisión propia (§6.2) —
+   está pendiente preguntarle a Madfes si se puede restilar o mover al pie.
+   Acá solo se lo baja de tono para que no compita, sigue legible. */
+.catalog #MultiavisoWrapper #PoweredBy {
+  padding-block: var(--space-8);
+  text-align: center;
+  opacity: 0.7;
+}

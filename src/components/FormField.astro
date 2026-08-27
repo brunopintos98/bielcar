@@ -1,0 +1,195 @@
+---
+/**
+ * Un campo de formulario — §5.4.
+ *
+ * Existe para que las reglas de §5.4 vivan en UN lugar. Hay dos formularios en
+ * el sitio (service y contacto) y van a tener el mismo tratamiento de campo:
+ * label persistente arriba, input sin caja con solo línea inferior, sin radio,
+ * y la línea de marca de 2px en focus. Duplicar eso en dos componentes es cómo
+ * un sistema de diseño empieza a divergir.
+ *
+ * ─── Por qué un componente y no una clase global en base.css ───────────────
+ * Una `.field` global se aplicaría también dentro del markup del plugin de
+ * Multiaviso si el plugin usa esa clase, que es la regla "nunca un selector
+ * suelto" en sentido inverso. El plugin es Bootstrap 3 y no sabemos su
+ * inventario de clases. Los estilos scopeados de Astro no pueden alcanzarlo,
+ * porque el atributo de scope solo lo lleva nuestro markup.
+ *
+ * ─── Los inputs NO llevan `placeholder` ────────────────────────────────────
+ * §5.4 corrige explícitamente a la referencia: premiumcars usa el placeholder
+ * como label y en cuanto escribís perdés el nombre del campo. Por eso este
+ * componente no expone un prop `placeholder`. Si alguien lo necesita "para dar
+ * un ejemplo", el lugar es un hint debajo del campo, no el placeholder.
+ */
+interface Option {
+  value: string;
+  label: string;
+}
+
+interface Props {
+  /** Prefijo de `id`, para que dos formularios en un mismo documento no choquen. */
+  prefix: string;
+  name: string;
+  label: string;
+  control?: 'input' | 'textarea' | 'select';
+  type?: 'text' | 'tel' | 'email';
+  inputmode?: 'numeric';
+  autocomplete?: string;
+  required?: boolean;
+  /** Solo textarea. */
+  rows?: number;
+  /** Solo select. */
+  options?: Option[];
+  /** Ocupa el ancho completo de la grilla del formulario. */
+  wide?: boolean;
+}
+
+const {
+  prefix,
+  name,
+  label,
+  control = 'input',
+  type = 'text',
+  inputmode,
+  autocomplete,
+  required = true,
+  rows = 4,
+  options = [],
+  wide = false,
+} = Astro.props;
+
+const id = `${prefix}-${name}`;
+---
+
+<p class:list={['field', { 'field--wide': wide }]}>
+  <label class="field__label" for={id}>{label}</label>
+
+  {
+    control === 'textarea' ? (
+      <textarea
+        class="field__control field__control--textarea"
+        id={id}
+        name={name}
+        rows={rows}
+        autocomplete={autocomplete}
+        required={required}
+      />
+    ) : control === 'select' ? (
+      <span class="field__select-wrap">
+        <select class="field__control field__control--select" id={id} name={name} required={required}>
+          {options.map((o) => (
+            <option value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        {/* Chevron propio: `appearance: none` saca el nativo, y sin uno el
+            select deja de leerse como desplegable. Es decorativo, va oculto
+            para lectores de pantalla — el <select> ya se anuncia solo. */}
+        <svg
+          class="field__chevron"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </span>
+    ) : (
+      <input
+        class="field__control"
+        id={id}
+        name={name}
+        type={type}
+        inputmode={inputmode}
+        autocomplete={autocomplete}
+        required={required}
+      />
+    )
+  }
+</p>
+
+<style>
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .field--wide {
+    grid-column: 1 / -1;
+  }
+
+  .field__label {
+    font-size: var(--fs-label);
+    line-height: var(--lh-label);
+    color: var(--field-label, var(--text-on-light-muted));
+  }
+
+  /* §5.4: sin caja, solo línea inferior, sin radio. */
+  .field__control {
+    width: 100%;
+    padding: var(--space-3) 0;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--field-rule, var(--rule-on-light));
+    border-radius: var(--radius-none);
+    font-family: var(--font-body);
+    font-size: var(--fs-body);
+    line-height: 1.4;
+    color: var(--field-text, var(--text-on-light));
+    transition:
+      border-color var(--dur) var(--ease),
+      box-shadow var(--dur) var(--ease);
+  }
+
+  .field__control--textarea {
+    resize: vertical;
+    line-height: var(--lh-body);
+  }
+
+  .field__select-wrap {
+    position: relative;
+    display: block;
+  }
+
+  .field__control--select {
+    appearance: none;
+    /* Deja aire a la derecha para el chevron; sin esto una opción larga se le
+       mete abajo. */
+    padding-right: var(--space-6);
+    cursor: pointer;
+  }
+
+  .field__chevron {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--field-label, var(--text-on-light-muted));
+  }
+
+  /* §5.4 pide 2px en focus. Se logra con el box-shadow y no subiendo el
+     border-bottom-width, porque cambiar el ancho del borde reflowea el campo un
+     pixel y toda la columna tiembla al tabular. El outline de teclado lo pone
+     base.css con :focus-visible; esto es la línea de marca. */
+  .field__control:focus {
+    border-bottom-color: var(--field-focus, var(--brand));
+    box-shadow: 0 1px 0 0 var(--field-focus, var(--brand));
+  }
+
+  /* `:user-invalid` y no `:invalid`: el navegador solo lo aplica DESPUÉS de que
+     la persona interactuó o intentó enviar. Con `:invalid` todos los campos
+     requeridos aparecen en rojo apenas carga la página. */
+  .field__control:user-invalid {
+    border-bottom-color: #B00020;
+    box-shadow: 0 1px 0 0 #B00020;
+  }
+</style>

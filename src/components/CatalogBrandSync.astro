@@ -1,0 +1,108 @@
+---
+import { getImage } from 'astro:assets';
+import { SALES_BRANDS, BRAND_BANNERS } from '../data/site';
+
+/**
+ * Cuando el listado viene filtrado por marca, el título Y la foto del hero
+ * pasan a ser los de esa marca.
+ *
+ *     /vehiculos                     →  "Todos los vehículos" + foto genérica
+ *     /vehiculos?ma_brand=mitsubishi →  "Mitsubishi" + banner de Mitsubishi
+ *
+ * ─── Por qué no hace falta manejar el "sacar el filtro" ────────────────────
+ * Porque no es interacción: el chip del filtro activo que dibuja el plugin
+ * tiene un `<a href>` a la URL SIN el parámetro, o sea una navegación
+ * completa. Al volver a cargar la página el título ya renderiza el default y
+ * este script no encuentra `ma_brand`. Nada que deshacer.
+ *
+ * (Verificado en el DOM real: `#CurrentFilters .current-filter > a` apunta a
+ * `https://bielcar.vercel.app/usados`, sin querystring.)
+ *
+ * ─── Por qué es un script de cliente ───────────────────────────────────────
+ * El sitio es `output: 'static'`. Las páginas se prerenderizan y en build time
+ * `Astro.url.searchParams` viene vacío SIEMPRE. Leerlo en el frontmatter
+ * compila, no falla, y no anda nunca — es el mismo modo de falla silencioso
+ * que ya está anotado en ContactForm.astro.
+ *
+ * ─── Lista blanca, no saneamiento ──────────────────────────────────────────
+ * El texto que se muestra sale de `SALES_BRANDS`, nunca de la URL. Un valor
+ * que no esté en la lista se ignora y el título queda como estaba. No es por
+ * XSS —se asigna a `textContent`— sino porque si no, alguien puede armar
+ * `/vehiculos?ma_brand=<lo que quiera>` y compartirlo con un título inventado
+ * encima del catálogo de Bielcar.
+ *
+ * Consecuencia asumida: los filtros de marca de la BARRA LATERAL del plugin
+ * incluyen marcas que Bielcar vende usadas pero no representa (Volkswagen,
+ * Renault, Jeep…). Con esas el título no cambia. Es el precio de no confiar en
+ * la URL, y el caso que importa —la franja de marcas del Home, que solo linkea
+ * a las 7— queda cubierto entero.
+ */
+/* Marca → nombre para mostrar + banner, en un solo JSON. El script no
+   necesita conocer `SALES_BRANDS` ni `BRAND_BANNERS`: recibe el mapa ya
+   resuelto y hace un lookup. Una marca sin banner queda con `banner: null` y
+   solo cambia el título. */
+/* Las variantes de cada banner se generan EN EL BUILD, con los mismos widths
+   y formato que usa <PhotoHero>. Si acá se generaran distintas, el navegador
+   bajaría un juego de imágenes para el hero por defecto y otro al cambiar de
+   marca — y como es el mismo `<img>`, tienen que ser intercambiables.
+
+   `getImage()` devuelve `src` y `srcSet`; el swap del cliente pisa los dos.
+   Pisar solo `src` dejaría el srcset viejo y el navegador podría seguir
+   mostrando la foto anterior: `srcset` le gana a `src` cuando ambos están. */
+const entries = await Promise.all(
+  SALES_BRANDS.map(async (name) => {
+    const banner = BRAND_BANNERS[name];
+    if (!banner) return [name.toLowerCase(), { name, banner: null }] as const;
+
+    const img = await getImage({
+      src: banner.src,
+      widths: [640, 960, 1280, 1920],
+      format: 'webp',
+      quality: 72,
+    });
+
+    return [
+      name.toLowerCase(),
+      { name, banner: { src: img.src, srcset: img.srcSet.attribute, alt: banner.alt } },
+    ] as const;
+  })
+);
+
+const BRAND_MAP = JSON.stringify(Object.fromEntries(entries));
+---
+
+<span data-catalog-brand-sync data-brands={BRAND_MAP} hidden></span>
+
+<script>
+  const node = document.querySelector<HTMLElement>('[data-catalog-brand-sync]');
+  const raw = new URLSearchParams(window.location.search).get('ma_brand');
+
+  if (node && raw) {
+    type Entry = { name: string; banner: { src: string; srcset: string; alt: string } | null };
+    const map: Record<string, Entry> = JSON.parse(node.dataset.brands ?? '{}');
+
+    /* Lookup contra la lista, nunca uso del valor de la URL: el texto que se
+       pinta y la ruta de la imagen salen SIEMPRE de nuestros datos. Un valor
+       desconocido se ignora y la página queda como estaba. */
+    const entry = map[raw.trim().toLowerCase()];
+
+    if (entry) {
+      const h1 = document.querySelector<HTMLElement>('main h1');
+      if (h1) h1.textContent = entry.name;
+
+      /* El <title> acompaña, así la pestaña y el historial dicen lo mismo que
+         la página. El plugin lo reescribe por su cuenta en la vista de
+         DETALLE, que es otra URL — acá no compiten. */
+      document.title = `${entry.name} — Bielcar`;
+
+      const img = document.querySelector<HTMLImageElement>('.hero__media');
+      if (img && entry.banner) {
+        /* `srcset` PRIMERO y siempre: si queda el del hero por defecto, le gana
+           a `src` y la foto no cambia. */
+        img.srcset = entry.banner.srcset;
+        img.src = entry.banner.src;
+        img.alt = entry.banner.alt;
+      }
+    }
+  }
+</script>

@@ -1,0 +1,295 @@
+---
+import Base from '../layouts/Base.astro';
+import PhotoHero from '../components/PhotoHero.astro';
+import ContactForm from '../components/ContactForm.astro';
+import Icon from '../components/Icon.astro';
+import Placeholder from '../components/Placeholder.astro';
+import { site, waLink, mapEmbedSrc, PHOTOS, CONTACT, ALL_PHONES, SALES_EMAIL, SERVICE_EMAIL } from '../data/site';
+
+/**
+ * /contacto — composición de §7: "Split formulario / datos + mapa".
+ *
+ * ─── El footer no repite sus datos acá ─────────────────────────────────────
+ * El bloque de datos + mapa del footer (§5.8, partes 3) es una tarjeta de
+ * contacto condensada, y en la página de contacto sería lo mismo dos veces en
+ * la misma pantalla: la misma dirección, el mismo horario, los mismos
+ * teléfonos y el mismo mapa. Footer.astro lo suprime en esta ruta, igual que
+ * ya suprimía la franja de marcas en el Home. Acá los datos van más completos
+ * —etiquetados uno por uno, con "cómo llegar"— y el mapa va más grande, que es
+ * lo que justifica que la página exista además del footer.
+ *
+ * Lo único que /contacto agrega de verdad sobre el footer es el formulario. El
+ * resto es el mismo dato mejor presentado, y conviene tenerlo claro antes de
+ * agregarle secciones.
+ *
+ * ─── El mapa ───────────────────────────────────────────────────────────────
+ * Misma construcción de URL que Footer.astro, no una segunda URL escrita a
+ * mano: la dirección sale de `site.address` en los dos lados y si cambia,
+ * cambia en los dos.
+ */
+const mapSrc = mapEmbedSrc();
+const directionsHref = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+  site.address
+)}`;
+/**
+ * Las dos líneas, cada una con sus fijos y su WhatsApp.
+ *
+ * Ventas y taller atienden en números distintos (CONTACT en site.ts). En la
+ * página de contacto eso tiene que estar explícito: la persona ya sabe si
+ * viene a comprar o a agendar, y lo único que necesita es saber a cuál marcar.
+ * Una lista mezclada la obliga a adivinar.
+ */
+const lines = [
+  {
+    ...CONTACT.sales,
+    wa: waLink('Hola, quiero hacer una consulta.', 'sales'),
+  },
+  {
+    ...CONTACT.service,
+    wa: waLink('Hola, quiero hacer una consulta por service.', 'service'),
+  },
+];
+
+/**
+ * Las casillas de mail, colapsadas si son la misma.
+ *
+ * Sebastián confirmó que ventas y service se atienden en la misma dirección.
+ * Renderizar "Ventas: bielcar@…" y "Service: bielcar@…" una debajo de la otra
+ * hace que la persona lea dos veces para descubrir que son iguales, y sugiere
+ * una separación de canales que no existe.
+ *
+ * La condición mira los valores, no un booleano escrito a mano: el día que
+ * abran una casilla de taller, `SERVICE_EMAIL` cambia en site.ts y esta vista
+ * vuelve sola a dos filas.
+ */
+const emails =
+  SALES_EMAIL !== null && SALES_EMAIL === SERVICE_EMAIL
+    ? [{ label: 'Email', value: SALES_EMAIL, missing: 'mail de contacto' }]
+    : [
+        { label: 'Ventas', value: SALES_EMAIL, missing: 'mail de ventas' },
+        { label: 'Service', value: SERVICE_EMAIL, missing: 'mail de service' },
+      ];
+---
+
+<Base
+  title="Contacto"
+  description={`Contactá a Bielcar Automóviles. ${site.address}. Teléfonos ${ALL_PHONES.map(
+    (p) => p.display
+  ).join(', ')}. ${site.hours}.`}
+>
+  {/* Hero con foto, no el plano de §5.2 — igual que /service. El ⚠️ de
+      PhotoHero.astro (la foto queda arriba del detalle de un vehículo) no
+      aplica acá: /contacto no tiene contenedor de Multiaviso. */}
+  <PhotoHero
+    image={PHOTOS.contactHero}
+    title="Contacto"
+    lede="Escríbanos y le respondemos por WhatsApp."
+  />
+
+  <section class="contacto band band--dark">
+    <div class="container contacto__split">
+      <div class="contacto__form">
+        <h2 class="h2">Mándenos su consulta.</h2>
+        <p class="lede contacto__lede">
+          Complete los datos y se abre WhatsApp con el mensaje ya escrito.
+        </p>
+        <div class="contacto__form-inner">
+          <ContactForm />
+        </div>
+      </div>
+
+      <div class="contacto__data">
+        <h2 class="h3 contacto__data-title">Dónde estamos</h2>
+
+        <ul class="dl">
+          <li>
+            <Icon name="map-pin" size={20} />
+            <span>
+              <span class="dl__label">Dirección</span>
+              <span class="dl__value">{site.address}</span>
+              <a class="dl__link" href={directionsHref} target="_blank" rel="noopener noreferrer">
+                Cómo llegar
+              </a>
+            </span>
+          </li>
+
+          <li>
+            <Icon name="clock" size={20} />
+            <span>
+              <span class="dl__label">Horario</span>
+              <span class="dl__value">{site.hours}</span>
+            </span>
+          </li>
+
+          {
+            lines.map((line) => (
+              <li>
+                <Icon name="phone" size={20} />
+                <span>
+                  <span class="dl__label">{line.label}</span>
+                  <span class="dl__value">
+                    {line.phones.map((p, i) => (
+                      <>
+                        {i > 0 && <span aria-hidden="true"> · </span>}
+                        <a href={p.href}>{p.display}</a>
+                      </>
+                    ))}
+                  </span>
+                  <span class="dl__value">
+                    {line.wa ? (
+                      <a href={line.wa} target="_blank" rel="noopener noreferrer">
+                        WhatsApp {line.mobile}
+                      </a>
+                    ) : (
+                      <Placeholder
+                        what={`WhatsApp de ${line.label.toLowerCase()}`}
+                        from="Sebastián"
+                      />
+                    )}
+                  </span>
+                </span>
+              </li>
+            ))
+          }
+
+          {
+            emails.map((mail) => (
+              <li>
+                <Icon name="mail" size={20} />
+                <span>
+                  <span class="dl__label">{mail.label}</span>
+                  <span class="dl__value">
+                    {mail.value ? (
+                      <a href={`mailto:${mail.value}`}>{mail.value}</a>
+                    ) : (
+                      <Placeholder what={mail.missing} from="Sebastián" />
+                    )}
+                  </span>
+                </span>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mapa" aria-label={`Mapa de ${site.address}`}>
+    <iframe
+      src={mapSrc}
+      title={`Mapa de ${site.address}`}
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </section>
+</Base>
+
+<style>
+  /* El desplegable de "Motivo" es un popup NATIVO del sistema: no lo
+     alcanza ninguna regla de CSS. Sin esto sale blanco sobre la banda oscura.
+     Va acá y no en .band--dark para no tocar los controles del plugin de
+     Multiaviso, que no se pueden verificar en dev (ver CLAUDE.md). */
+  .contacto {
+    color-scheme: dark;
+  }
+
+  .contacto__split {
+    display: grid;
+    grid-template-columns: 7fr 5fr;
+    gap: var(--space-16);
+    align-items: start;
+  }
+
+  .contacto__lede {
+    margin-top: var(--space-3);
+    color: var(--text-on-dark-muted);
+  }
+
+  .contacto__form-inner {
+    margin-top: var(--space-12);
+  }
+
+  .contacto__data-title {
+    color: var(--text-on-dark);
+  }
+
+  .dl {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    list-style: none;
+    margin: var(--space-8) 0 0;
+    padding: 0;
+  }
+
+  .dl li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  /* §2.2: sobre banda OSCURA el acento va en --brand-bright. --brand-deep,
+     que es lo que estaba acá cuando la banda era clara, se hunde contra
+     #0D0D0D. */
+  .dl svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--brand-bright);
+  }
+
+  .dl__label {
+    display: block;
+    font-size: var(--fs-label);
+    line-height: var(--lh-label);
+    color: var(--text-on-dark-muted);
+  }
+
+  .dl__value {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--fs-body);
+    line-height: 1.5;
+    color: var(--text-on-dark);
+  }
+
+  .dl__value a {
+    color: var(--text-on-dark);
+    text-decoration: none;
+  }
+
+  .dl__value a:hover {
+    color: var(--brand-bright);
+  }
+
+  .dl__link {
+    display: inline-block;
+    margin-top: var(--space-2);
+    font-size: var(--fs-body-sm);
+    color: var(--brand-bright);
+  }
+
+  /* El mapa es el cierre de la página y va a ancho de viewport, más alto que el
+     del footer: acá es el contenido, allá es un dato de referencia. */
+  .mapa iframe {
+    display: block;
+    width: 100%;
+    height: 480px;
+    border: 0;
+    /* Mismo tratamiento que el mapa del footer. El filtro es un token
+       compartido justamente para que no se separen: ver `--map-filter` en
+       tokens.css, con la explicación del brightness. */
+    filter: var(--map-filter);
+  }
+
+  @media (max-width: 1099px) {
+    .contacto__split {
+      grid-template-columns: 1fr;
+      gap: var(--space-12);
+    }
+  }
+
+  @media (max-width: 899px) {
+    .mapa iframe {
+      height: 360px;
+    }
+  }
+</style>

@@ -1,0 +1,43 @@
+---
+import Base from '../layouts/Base.astro';
+import MultiavisoScripts from '../components/MultiavisoScripts.astro';
+import MultiavisoCatalog from '../components/MultiavisoCatalog.astro';
+import PageHero from '../components/PageHero.astro';
+import PhotoHero from '../components/PhotoHero.astro';
+import { PHOTOS } from '../data/site';
+import PermutaBand from '../components/PermutaBand.astro';
+import CatalogBrandSync from '../components/CatalogBrandSync.astro';
+
+/**
+ * La misma foto que el tile de esta sección en el Home, así el acceso y la
+ * página que abre se corresponden.
+ *
+ * Puede ser `null` —las fotos las manda Sebastián— y por eso hay fallback a
+ * <PageHero>, el hero plano de §5.2, en vez de un `!` que afirme que existe.
+ * Además de no mentirle al typechecker, el fallback es literalmente lo que el
+ * documento pide para esta página: si no hay foto, no hay nada que perder.
+ */
+const heroPhoto = PHOTOS.tileNuevos;
+---
+
+<Base
+  title="Vehículos 0km"
+  description="Autos y camionetas 0km en Bielcar Automóviles, Montevideo. Servicio oficial y permuta."
+>
+  <MultiavisoScripts slot="head" viewMode="LIST" condition="NEW" pageSize={12} />
+
+  {/* Foto en vez del hero plano de §5.2 — desviación pedida. Ver el ⚠️ de
+      PhotoHero.astro: el detalle de vehículo comparte esta URL, así que la
+      foto también queda arriba de la ficha de un auto que no es ese. */}
+  {
+    heroPhoto ? (
+      <PhotoHero image={heroPhoto} title="Vehículos 0km" lede="Autos y camionetas 0km, listos para estrenar." />
+    ) : (
+      <PageHero title="Vehículos 0km" lede="Autos y camionetas 0km, listos para estrenar." />
+    )
+  }
+
+  <MultiavisoCatalog />
+  <PermutaBand />
+  <CatalogBrandSync />
+</Base>

@@ -1,0 +1,212 @@
+# =============================================================================
+# Agent Configuration — Project Calibration Knobs (multi-stack aware)
+# =============================================================================
+# This file is the SINGLE SOURCE OF TRUTH for project-specific settings that
+# every subagent reads at the start of each task. The expected lifecycle:
+#
+#   1. `.claude/` is dropped into the project repo
+#   2. `/calibrate` scans the repo and rewrites THIS FILE — it populates
+#      `stacks:` entries, detects frameworks from package.json (when there is
+#      one), and fills in paths / commands / routing / state / api per stack
+#   3. Normal agent-driven work begins — `policy` triages every request first,
+#      then a stack-qualified specialist subagent handles the work
+#   4. `/recalibrate` re-runs step 2 whenever the project structure drifts
+#
+# `/calibrate` and `/recalibrate` own this file. Subagents read from it — they
+# never hard-code project paths or commands.
+#
+# This project is a plain, single-repo codebase. There are no git submodules
+# and no wrapper repo; every path below is relative to the repository root.
+#
+# Last calibrated: Astro static site (see `stacks.site`).
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Global policies
+# ---------------------------------------------------------------------------
+# The project has a TypeScript toolchain (tsconfig.json + typescript in
+# devDependencies + `astro check`), so the flag is on.
+typescript_first: true
+
+# Astro has its own component file extension, so the flag needs a qualifier or
+# it reads as false. It means "typed code, no stray .js" — NOT "every new file
+# ends in .ts". Specialists must read this note before applying the rule.
+typescript_first_note: >
+  `.astro` for pages, layouts and components; `.ts` for utilities, data modules
+  and endpoints; no new `.js`. Component logic lives in the `.astro` frontmatter
+  and is type-checked by `npm run check`.
+
+# ---------------------------------------------------------------------------
+# Stacks — one entry per codebase in this repo
+# ---------------------------------------------------------------------------
+# Each key under `stacks:` is an alias. Each value has `path`, `type`
+# (`web` | `node` | `rn`), plus stack-local `paths:`, `commands:`, and
+# type-specific blocks (`web:` / `node:` metadata, `routing:`, `state:`,
+# `api:`, `navigation:`).
+#
+# Missing commands are not placeholders — if a stack genuinely has no lint /
+# typecheck / test command, omit the key. Agents skip that verification step
+# and say so in their report rather than inventing a command.
+# ---------------------------------------------------------------------------
+stacks:
+  site:
+    path: ./
+    type: web
+    paths:
+      src:        src/
+      pages:      src/pages/          # Astro file-based routing — one file per route
+      components: src/components/
+      layouts:    src/layouts/        # Astro-specific; outside the generic web schema
+      data:       src/data/           # site.ts — single source of truth for site data
+      styles:     src/styles/
+      public:     public/             # static assets served as-is
+      # features:  omitted — no feature-folder split; components/ is flat
+      # routing:   omitted — routing is the pages/ directory itself, see `routing:` below
+      # state:     omitted — no client state library; the site is static
+      # api:       omitted — no data-fetching layer of our own, see `web.api_library`
+      # hooks:     omitted — no React, no hooks
+      # tests:     omitted — no test suite yet
+    commands:
+      dev_server: "npm run dev"
+      build:      "npm run build"
+      typecheck:  "npm run check"     # `astro check` — NOT `tsc --noEmit`, which
+                                      # cannot parse .astro files
+      # lint:      omitted — no ESLint configured
+      # unit_test: omitted — no test runner configured
+    web:
+      framework:     astro
+      styles:        plain-css        # custom properties in src/styles/. NO Tailwind:
+                                      # its preflight breaks the Multiaviso plugin and
+                                      # its .hidden utility collides with the plugin's
+      state_library: none
+      api_library:   none             # the vehicle catalog is rendered by a third-party
+                                      # jQuery plugin; we have no data layer of our own
+      deploy:        vercel           # see .vercel/ and vercel.json
+    routing:
+      library: astro-file-router
+      pages:   src/pages/
+      # ClientRouter / view transitions are deliberately NOT enabled: client-side
+      # routing re-mounts the DOM and the Multiaviso plugin does not re-initialize.
+      # Full page loads always. Do not add it.
+
+# ---------------------------------------------------------------------------
+# Third-party integration — Multiaviso vehicle catalog
+# ---------------------------------------------------------------------------
+# Everything inside #MultiavisoContainer is foreign markup rendered at runtime
+# by a third-party jQuery plugin. Agents may restyle it via CSS but must NEVER
+# manipulate it with JavaScript. The full contract is documentation/DESIGN.md §6.
+#
+# Hard constraints an agent needs to know before touching the catalog pages:
+#   · Every override selector MUST be prefixed with `#MultiavisoWrapper`.
+#     Bare selectors like `.item-title` are generic and collide site-wide.
+#   · Win specificity by ID, not by `!important`. Reserve `!important` for the
+#     places where the plugin uses inline styles.
+#   · Never use the CSS variable name `--screen-height`; the plugin defines it.
+#   · The plugin's scripts must carry `is:inline` or Astro bundles them and
+#     breaks the load order and global scope they need.
+#   · The catalog does NOT render on localhost or on Vercel preview deploys —
+#     the whitelist is per-domain and only bielcar.vercel.app is allowed.
+#     An empty container in dev is EXPECTED, not a bug. Do not debug it.
+#     Verify catalog work with `npm run deploy` (vercel --prod) only.
+multiaviso:
+  container_selector: "#MultiavisoContainer"
+  wrapper_selector: "#MultiavisoWrapper"
+  overrides: src/styles/multiaviso.css
+  scripts_component: src/components/MultiavisoScripts.astro
+  verify_only_on: "https://bielcar.vercel.app"
+
+# ---------------------------------------------------------------------------
+# Restricted paths — changes require EXPLICIT human approval before editing
+# ---------------------------------------------------------------------------
+restricted_paths:
+  # Environment / secrets
+  - "**/.env"
+  - "**/.env.*"
+  - ".claude/*.env"
+
+  # Deploy / hosting config
+  - "vercel.json"
+  - ".vercel/**"
+
+  # CI / CD
+  - ".github/workflows/**"
+
+  # Framework & toolchain roots
+  - "astro.config.mjs"
+  - "**/package.json"
+  - "**/tsconfig.json"
+  - "**/vite.config.ts"
+  - "**/next.config.js"
+  - "**/next.config.mjs"
+  - "**/babel.config.js"
+  - "**/jest.config.js"
+  - "**/vitest.config.ts"
+  - "**/.eslintrc.*"
+  - "**/prisma/schema.prisma"    # DB schema (node-data owns edits)
+  - "**/drizzle.config.ts"
+
+  # Native mobile config — only relevant if an RN app is ever added here
+  - "**/*.entitlements"
+  - "**/*.pbxproj"
+  - "**/Info.plist"
+  - "**/Podfile"
+  - "**/Podfile.lock"
+  - "**/*.keystore"
+  - "**/google-services.json"
+  - "**/android/app/build.gradle"
+  - "**/android/build.gradle"
+  - "**/android/gradle.properties"
+  - "**/fastlane/Fastfile"
+
+# ---------------------------------------------------------------------------
+# Review-required paths — a second pair of eyes before merging
+# ---------------------------------------------------------------------------
+# This is a solo/local project: "review" means the agent STOPS and gets an
+# explicit human OK on the diff, not a formal PR review.
+# ---------------------------------------------------------------------------
+review_required_paths:
+  - "**/.env*"
+  - ".github/workflows/**"
+  - "vercel.json"
+  - ".vercel/**"
+  - "astro.config.mjs"           # build format / trailingSlash affect shared vehicle links
+  - "**/package.json"            # dependency changes (owned by `dependencies`)
+  - "src/styles/multiaviso.css"  # third-party overrides — only verifiable in production
+  - "**/prisma/schema.prisma"
+  - "**/drizzle.config.ts"
+  - "**/ios/**"
+  - "**/android/**"
+  - "**/fastlane/**"
+  - "**/scripts/**"
+
+# ---------------------------------------------------------------------------
+# Forbidden paths — agents must NEVER write to these
+# ---------------------------------------------------------------------------
+forbidden_paths:
+  - "**/node_modules/**"
+  - "**/yarn.lock"
+  - "**/package-lock.json"       # only npm may modify
+  - "**/pnpm-lock.yaml"
+  - "**/.astro/**"               # Astro's generated types
+  - "**/dist/**"
+  - "**/.next/**"
+  - "**/build/**"
+  - "**/.turbo/**"
+  - "**/.vercel/output/**"
+  - "**/ios/Pods/**"
+  - "**/ios/build/**"
+  - "**/android/.gradle/**"
+  - "**/android/app/build/**"
+
+# ---------------------------------------------------------------------------
+# Requirements integration
+# ---------------------------------------------------------------------------
+# documentation/DESIGN.md is the implementation contract for this project:
+# palette, type scale, components, per-page composition, and the full Multiaviso
+# integration. It is not a mood board — feature specialists MUST consult it
+# before proposing UI work, and flag any conflict rather than silently choosing.
+#
+# Agents resolve stack-scoped `requirements.path` first, then this top-level
+# fallback. This project uses the top-level shape (single stack).
+requirements:
+  path: documentation/

@@ -1,0 +1,234 @@
+---
+import Placeholder from './Placeholder.astro';
+import { BRAND_LOGOS, SERVICE_BRANDS, serviceEnquiryHref } from '../data/site';
+
+/**
+ * Las 4 marcas de servicio oficial — §5.6.
+ *
+ * Es la franja de /service, y NO es la misma que la del Home y el footer:
+ *
+ *   BrandStrip     → 7 marcas de VENTA, en movimiento, cada logo entra al
+ *                    catálogo filtrado por esa marca.
+ *   ServiceBrands  → 4 marcas de SERVICIO OFICIAL, quieta, cada logo lleva a
+ *                    /contacto con el formulario ya cargado para esa marca.
+ *
+ * ─── Por qué NO abre WhatsApp directo ──────────────────────────────────────
+ * Lo hizo por un rato y se cambió por pedido explícito: **abrir WhatsApp desde
+ * un click en un logo es invasivo.** Saca a la persona del sitio a una app,
+ * sin haberle preguntado nada y sin que ella sepa qué se va a mandar en su
+ * nombre. Ahora el logo navega a /contacto, el formulario aparece con el
+ * motivo y el mensaje escritos, y la persona ve exactamente qué va a enviar
+ * antes de decidir. WhatsApp se abre recién cuando toca el botón.
+ *
+ * Efecto lateral: la franja dejó de ser conversión y pasó a ser navegación
+ * interna, como el resto del sitio. Un click acá no cuesta nada.
+ *
+ * ─── Sin título y sin etiqueta ─────────────────────────────────────────────
+ * La franja llegó a tener una línea explicativa arriba y una etiqueta
+ * "Agendar" debajo de cada logo. Las dos se sacaron por pedido. Queda como
+ * §5.6 lo describe: wordmarks pelados sobre banda oscura.
+ *
+ * Lo único que queda diciendo a dónde lleva cada logo es el `aria-label`
+ * ("Agendar service oficial <marca>"), que es invisible pero es el nombre
+ * accesible del link. **No lo saques**: sin él, un lector de pantalla anuncia
+ * cuatro links que solo dicen el nombre de una marca, y no hay forma de saber
+ * que llevan a agendar.
+ *
+ * ─── El requisito de alpha sigue vigente ───────────────────────────────────
+ * `filter: brightness(0) invert(1)` lleva el glifo a blanco conservando el
+ * canal alpha. Un PNG con fondo opaco se convierte en un bloque blanco. Los
+ * cuatro de acá están verificados (ver BRAND_LOGOS en site.ts); si se
+ * reemplaza alguno, revisar eso antes.
+ */
+/**
+ * El alto máximo de cada logo, según su proporción.
+ *
+ * Con una caja única y `object-fit: contain`, un emblema casi cuadrado (JAC,
+ * Mitsubishi) llena el alto entero mientras que un wordmark 6:1 como Lynk & Co
+ * queda a menos de la mitad. Geométricamente están los dos centrados; a la
+ * vista, los emblemas se comen la fila. En el marquee del Home eso se disimula
+ * porque la fila se mueve y hay siete logos; acá son cuatro y quietos, y salta.
+ *
+ * Se le baja el techo a los emblemas en vez de subírselo a los wordmarks:
+ * agrandar el wordmark lo empujaría fuera del ancho de la caja y encima lo
+ * dejaría pixelado, porque son bitmaps.
+ *
+ * Un wordmark muy ancho igual termina limitado por el ancho, no por este
+ * número — para Lynk & Co el tope de 48 no llega a aplicar.
+ */
+const EMBLEM_MAX_RATIO = 1.5;
+/* 44 y no 40: con 40 el emblema de JAC —que además del óvalo lleva "JAC" y
+   "MOTORS" adentro— quedaba tan chico que sus textos internos no se leían.
+   Verificado componiendo la fila con los archivos reales, no a ojo. */
+const EMBLEM_H = 44;
+const WORDMARK_H = 48;
+
+const entries = SERVICE_BRANDS.map((name) => {
+  const logo = BRAND_LOGOS[name] ?? null;
+  const ratio = logo ? logo.w / logo.h : 1;
+
+  return {
+    name,
+    logo,
+    href: serviceEnquiryHref(name),
+    maxHeight: ratio < EMBLEM_MAX_RATIO ? EMBLEM_H : WORDMARK_H,
+  };
+});
+
+const missingLogos = entries.filter((b) => !b.logo).map((b) => b.name);
+---
+
+<section class="sbrands" aria-label="Marcas de servicio oficial">
+  <ul class="sbrands__list">
+    {
+      entries.map((brand) => (
+        <li>
+          <a
+            class="sbrand"
+            href={brand.href}
+            aria-label={`Agendar service oficial ${brand.name}`}
+            style={`--logo-h: ${brand.maxHeight}px`}
+          >
+            <span class="sbrand__media">
+              {brand.logo ? (
+                <img
+                  class="sbrand__logo"
+                  src={brand.logo.src}
+                  alt={brand.name}
+                  width={brand.logo.w}
+                  height={brand.logo.h}
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span class="sbrand__wordmark">{brand.name}</span>
+              )}
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    missingLogos.length > 0 && (
+      <div class="container sbrands__missing">
+        <Placeholder what={`logo de ${missingLogos.join(', ')}`} from="Sebastián" />
+      </div>
+    )
+  }
+</section>
+
+<style>
+  .sbrands {
+    /* §5.6: padding 48px 0 sobre banda oscura. */
+    padding-block: var(--space-12);
+    background: var(--surface-dark);
+  }
+
+  .sbrands {
+    /* La caja de cada logo. El alto lo pisa cada ítem con `--logo-h`. */
+    --logo-w: 150px;
+    --logo-h: 48px;
+  }
+
+  /* §5.6: flex, gap 64px, centrado, wrap en mobile. Sin marquee.
+     `align-items: center` y no `flex-start`: los ítems tienen alturas
+     distintas ahora que cada logo tiene su tope, y alineados arriba quedarían
+     colgando de una línea invisible en vez de compartir un eje. */
+  .sbrands__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-12) var(--space-16);
+    list-style: none;
+    margin: 0;
+    padding-inline: var(--gutter);
+  }
+
+  /* Sin la etiqueta debajo, el link es solo la caja del logo. El padding
+     mantiene el área clickeable más grande que el glifo: con `contain` el
+     logo ocupa una fracción de la caja y apuntarle sería un blanco chico. */
+  .sbrand {
+    display: block;
+    padding: var(--space-4);
+    text-decoration: none;
+  }
+
+  .sbrand__media {
+    display: block;
+  }
+
+  /* Las medidas van en PÍXELES sobre el propio <img>, no en `100%` sobre un
+     wrapper.
+     Con `width/height: 100%` dentro de un contenedor de grid centrado, el
+     porcentaje no resuelve de forma confiable contra la caja y la imagen se
+     queda con su tamaño intrínseco: en la fila se veía JAC un 46% más alto que
+     Geely cuando los dos tenían que medir lo mismo. BrandStrip siempre usó
+     píxeles explícitos y por eso nunca tuvo el problema. */
+  .sbrand__logo {
+    display: block;
+    width: var(--logo-w);
+    height: var(--logo-h);
+    object-fit: contain;
+    /* Conserva el alpha y lleva el glifo a blanco puro (§5.6). */
+    filter: brightness(0) invert(1);
+    /* §5.6 pide 0.75 en reposo, y acá sí va 0.75: a diferencia del marquee, el
+       hover de esta franja tiene una sola cosa que hacer (destacar el ítem),
+       así que no hace falta arrancar más abajo para que el salto se note. */
+    opacity: 0.75;
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  .sbrand__wordmark {
+    display: grid;
+    place-items: center;
+    width: var(--logo-w);
+    height: var(--logo-h);
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text-on-dark);
+    opacity: 0.75;
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  .sbrand:hover .sbrand__logo,
+  .sbrand:hover .sbrand__wordmark,
+  .sbrand:focus-visible .sbrand__logo,
+  .sbrand:focus-visible .sbrand__wordmark {
+    opacity: 1;
+  }
+
+  .sbrands__missing {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-4);
+    margin-top: var(--space-12);
+  }
+
+  @media (max-width: 899px) {
+    .sbrands__list {
+      gap: var(--space-8) var(--space-12);
+    }
+
+    /* Misma proporción, un 72%: la caja baja de 150 a 108 de ancho y los topes
+       de alto acompañan, así el balance entre emblemas y wordmarks se mantiene
+       en vez de recalcularse. */
+    .sbrands {
+      --logo-w: 108px;
+    }
+
+    .sbrand__logo,
+    .sbrand__wordmark {
+      height: calc(var(--logo-h) * 0.72);
+    }
+
+    .sbrand__wordmark {
+      font-size: 16px;
+    }
+  }
+</style>

@@ -1,0 +1,17 @@
+# build output
+dist/
+.astro/
+
+# dependencies
+node_modules/
+
+# deploy
+.vercel
+
+# agent harness
+.claude/.policy-ran
+.claude/*.env
+.claude/cache/
+
+# macOS
+.DS_Store

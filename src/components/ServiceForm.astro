@@ -1,0 +1,87 @@
+---
+import WhatsAppForm from './WhatsAppForm.astro';
+import FormField from './FormField.astro';
+
+/**
+ * Formulario de service — §5.4 y §7.
+ *
+ * Los campos que pide el documento son marca, modelo, kilometraje, nombre y
+ * teléfono, y se serializan al texto del mensaje. Toda la fontanería —grilla,
+ * botón, apertura de wa.me, fallback de popup bloqueado— vive en
+ * <WhatsAppForm>; acá quedan los campos y el copy, que es lo único propio de
+ * esta página.
+ *
+ * El orden de los renglones del mensaje es el orden en que un vendedor los
+ * necesita: primero qué vehículo es, después a quién llamar.
+ */
+const TEMPLATE = `Hola, quiero agendar un service.
+
+Vehículo: {marca} {modelo}
+Kilometraje: {kilometraje} km
+Nombre: {nombre}
+Teléfono: {telefono}`;
+---
+
+<section class="sform band band--light" id="agendar">
+  <div class="container sform__inner">
+    <div class="sform__intro">
+      <p class="eyebrow sform__eyebrow">Agende</p>
+      <h2 class="h2 sform__title">Pida su turno de service.</h2>
+      <p class="lede sform__lede">
+        Complete los datos de su vehículo y se abre WhatsApp con el mensaje ya
+        escrito. Coordinamos día y hora por ahí mismo.
+      </p>
+    </div>
+
+    <div class="sform__form">
+      {/* `line="service"`: el turno de taller va al WhatsApp del taller, no al
+          de ventas. Ver CONTACT en site.ts. */}
+      <WhatsAppForm line="service" template={TEMPLATE} submitLabel="Agendar por WhatsApp">
+        <FormField prefix="sf" name="marca" label="Marca" autocomplete="off" />
+        <FormField prefix="sf" name="modelo" label="Modelo" autocomplete="off" />
+        <FormField
+          prefix="sf"
+          name="kilometraje"
+          label="Kilometraje"
+          inputmode="numeric"
+          autocomplete="off"
+        />
+        <FormField prefix="sf" name="nombre" label="Nombre" autocomplete="name" />
+        {/* Solo en la última fila: cuatro campos entran de a dos y el teléfono
+            quedaría como celda huérfana. */}
+        <FormField prefix="sf" name="telefono" label="Teléfono" type="tel" autocomplete="tel" wide />
+      </WhatsAppForm>
+    </div>
+  </div>
+</section>
+
+<style>
+  .sform__inner {
+    display: grid;
+    grid-template-columns: 5fr 7fr;
+    gap: var(--space-16);
+    align-items: start;
+  }
+
+  /* .eyebrow y .lede están calibrados para banda oscura (base.css). Sobre claro
+     hay que bajarlos a los neutros de §2 o quedan lavados. */
+  .sform__eyebrow {
+    color: var(--text-on-light-muted);
+  }
+
+  .sform__title {
+    margin-top: var(--space-3);
+  }
+
+  .sform__lede {
+    margin-top: var(--space-6);
+    color: var(--text-on-light-muted);
+  }
+
+  @media (max-width: 1099px) {
+    .sform__inner {
+      grid-template-columns: 1fr;
+      gap: var(--space-12);
+    }
+  }
+</style>

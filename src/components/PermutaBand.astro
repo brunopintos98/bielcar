@@ -1,0 +1,78 @@
+---
+import Button from './Button.astro';
+import { waLink } from '../data/site';
+
+/**
+ * Banda de permuta — §5.10.
+ *
+ * Va DEBAJO del contenedor de Multiaviso en /nuevos, /usados y /vehiculos. Es
+ * el momento exacto en que alguien mira autos y piensa en el que tiene. Arriba
+ * del listado sería interrumpir; abajo, es la pregunta que sigue.
+ *
+ * NO va en el Home: ahí la permuta entra como un ítem del bloque de servicios
+ * (§5.7), y ese ítem es el que lleva el texto largo. Dos apariciones del mismo
+ * CTA en una vista lo devalúan.
+ *
+ * NO lleva formulario. Una sección de tasación con marca/modelo/año/km es el
+ * patrón obvio y es una trampa: sin backend no se puede tasar nada, y un form
+ * que solo manda un WhatsApp con datos que el vendedor va a repreguntar igual
+ * agrega fricción sin agregar información (§5.10).
+ *
+ * Como el detalle se renderiza in-place sobre la misma URL, esta banda también
+ * aparece debajo del detalle de un vehículo. Está bien y hasta mejora: alguien
+ * mirando un auto puntual es el mejor momento para ofrecerle tomarle el suyo.
+ *
+ * ─── El copy ────────────────────────────────────────────────────────────────
+ * El de §5.10, corto. El texto largo que escribió Sebastián va en el ítem
+ * "Permuta" del bloque de servicios del Home, no acá: esta banda aparece
+ * debajo del listado y también debajo del detalle de un vehículo, y ahí un
+ * párrafo compite con la ficha que la persona vino a leer.
+ */
+const href = waLink('Hola, quiero consultar por una permuta.');
+---
+
+<section class="permuta band--light">
+  <div class="container">
+    <h2 class="h2">¿Tiene un usado?</h2>
+    <p class="permuta__lede">Lo tomamos como parte del pago.</p>
+    <div class="permuta__cta">
+      <Button variant="action" href={href} missing="número de WhatsApp" external>
+        Consultar por permuta
+      </Button>
+    </div>
+  </div>
+</section>
+
+<style>
+  .permuta {
+    padding-block: var(--space-16);
+  }
+
+  .permuta__lede {
+    margin-top: var(--space-3);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--text-on-light-muted);
+  }
+
+  .permuta__cta {
+    margin-top: var(--space-8);
+  }
+
+  @media (max-width: 899px) {
+    .permuta {
+      padding-block: var(--space-12);
+    }
+
+    /* Centrado en mobile, igual que ServiceCta: son las dos bandas de CTA del
+       sitio y tienen que comportarse igual. A la izquierda, el botón verde
+       queda colgando del borde con todo el ancho libre a la derecha.
+
+       `align-items` no serviría acá: `.container` es un bloque, no un flex, así
+       que el centrado lo hace `text-align` — el <Button> es `inline-flex` y se
+       centra como texto. */
+    .permuta .container {
+      text-align: center;
+    }
+  }
+</style>

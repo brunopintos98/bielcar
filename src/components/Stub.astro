@@ -1,0 +1,35 @@
+---
+/**
+ * Marcador de sección todavía no construida. Solo existe durante el scaffold —
+ * cada paso del plan de construcción va reemplazando estos bloques por el
+ * contenido real. Cuando no quede ninguno, el sitio está completo.
+ */
+interface Props {
+  step: string;
+}
+
+const { step } = Astro.props;
+---
+
+<section class="band band--light">
+  <div class="container">
+    <p class="eyebrow stub__eyebrow">Pendiente</p>
+    <p class="stub__text">
+      Esta sección se construye en el <strong>{step}</strong>.
+    </p>
+    <slot />
+  </div>
+</section>
+
+<style>
+  .stub__eyebrow {
+    color: var(--text-on-light-muted);
+  }
+
+  .stub__text {
+    margin-top: var(--space-3);
+    font-size: var(--fs-h3);
+    font-family: var(--font-display);
+    color: var(--text-on-light);
+  }
+</style>

@@ -1,0 +1,132 @@
+---
+import MultiavisoCatalog from './MultiavisoCatalog.astro';
+
+/**
+ * Carrusel de destacados del Home — §6.4 y §7.
+ *
+ * Es territorio Multiaviso: el markup de adentro lo inyecta el plugin. Lo único
+ * nuestro es la caja, el título y el estado vacío.
+ *
+ * ─── El estado vacío (§7, requisito explícito) ──────────────────────────────
+ * "Si el contenedor no tiene hijos después de la inicialización, ocultar la
+ * sección entera en vez de dejar un hueco."
+ *
+ * Esto NO viola la regla de no tocar el markup del plugin: el script no lee ni
+ * modifica nada de adentro de #MultiavisoContainer, solo observa si aparecieron
+ * hijos y escribe un atributo en NUESTRA sección.
+ *
+ * Por qué observar en vez de arrancar oculto: un carrusel de jQuery mide anchos
+ * al inicializar, y midiendo dentro de un `display: none` los mide en 0. La
+ * sección arranca visible y en flujo normal, y recién se oculta si a los 6s
+ * sigue vacía. El observer la deja quieta apenas llega el primer hijo, así que
+ * el timeout solo dispara cuando de verdad no hay nada.
+ *
+ * En localhost y en preview deploys va a aparecer y desaparecer a los 6s: el
+ * whitelist es por dominio y el contenedor nunca se llena. Es lo esperado
+ * (README) — no lo debuguees.
+ *
+ * ─── listingType: hoy 'ALL', PROVISORIO ────────────────────────────────────
+ * §6.4 y §7 llaman a este bloque "carrusel de destacados" y la config de
+ * producción es 'FEATURED'. Corre en 'ALL' **como prueba**, por decisión
+ * explícita del usuario, y el título sigue diciendo "Destacados".
+ *
+ * ⚠️  Mientras esté así, el bloque afirma algo que no es: son vehículos
+ * cualesquiera bajo un título que promete selección. Es aceptable para probar
+ * que el carrusel funciona; no es el estado final. La salida es una de dos:
+ * volver a 'FEATURED' cuando Sebastián marque destacados en el panel, o —si se
+ * decide dejar 'ALL'— cambiar el eyebrow a algo verdadero ("Nuestro stock").
+ *
+ * ─── El fallback automático NO funciona ────────────────────────────────────
+ * Se probó arrancar en 'FEATURED' y reintentar con 'ALL' si volvía vacío,
+ * llamando a `Multiaviso.initialize()` una segunda vez. No anduvo. La
+ * conclusión práctica: **el plugin no tolera que se lo inicialice dos veces
+ * sobre el mismo contenedor.** Queda anotado para no volver a intentarlo.
+ */
+---
+
+<section class="featured" data-featured aria-label="Vehículos destacados">
+  <MultiavisoCatalog surface="dark" view="carousel">
+    <div class="featured__header" slot="header">
+      <div>
+        <p class="eyebrow">Destacados</p>
+        <h2 class="h2 featured__title">Algunos de nuestros vehículos</h2>
+      </div>
+      <a class="featured__all" href="/vehiculos">Ver todos</a>
+    </div>
+  </MultiavisoCatalog>
+</section>
+
+<style>
+  /* Estado por defecto: visible. Solo el script lo pasa a "empty". */
+  .featured[data-state='empty'] {
+    display: none;
+  }
+
+  .featured__header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-6);
+    margin-bottom: var(--space-12);
+  }
+
+
+  .featured__title {
+    margin-top: var(--space-3);
+  }
+
+  .featured__all {
+    flex-shrink: 0;
+    font-size: var(--fs-body-sm);
+    color: var(--brand-bright);
+    text-decoration: none;
+    transition: color var(--dur) var(--ease);
+  }
+
+  .featured__all:hover {
+    color: var(--text-on-dark);
+  }
+
+  @media (max-width: 599px) {
+    .featured__header {
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: var(--space-8);
+    }
+  }
+</style>
+
+<script>
+  /* Ventana de gracia antes de declarar vacío el contenedor: el plugin
+     resuelve por red, así que no puede ser inmediata. Si el carrusel llega a
+     desaparecer con stock cargado, este número es el primer sospechoso. */
+  const GRACE_MS = 6000;
+
+  const section = document.querySelector<HTMLElement>('[data-featured]');
+  const container = document.getElementById('MultiavisoContainer');
+
+  if (section && container) {
+    let timer = 0;
+
+    const hasContent = () => container.firstElementChild !== null;
+
+    const observer = new MutationObserver(() => {
+      if (!hasContent()) return;
+      observer.disconnect();
+      window.clearTimeout(timer);
+    });
+
+    observer.observe(container, { childList: true, subtree: true });
+
+    timer = window.setTimeout(() => {
+      observer.disconnect();
+      if (!hasContent()) section.dataset.state = 'empty';
+    }, GRACE_MS);
+
+    /* Por si el plugin ya resolvió antes de que este módulo corriera. */
+    if (hasContent()) {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    }
+  }
+</script>

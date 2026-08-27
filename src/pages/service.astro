@@ -1,0 +1,353 @@
+---
+import Base from '../layouts/Base.astro';
+import PhotoHero from '../components/PhotoHero.astro';
+import ServiceBrands from '../components/ServiceBrands.astro';
+import ServiceForm from '../components/ServiceForm.astro';
+import Icon from '../components/Icon.astro';
+import Placeholder from '../components/Placeholder.astro';
+import {
+  site,
+  SERVICES,
+  SERVICE_BRANDS,
+  SERVICE_EMAIL,
+  SERVICE_OFFICIAL_NOTE,
+  SERVICE_SCHEDULE_NOTE,
+  SERVICE_INCLUDES,
+  SERVICE_APPROVAL_NOTE,
+  PHOTOS,
+  CONTACT,
+  waLink,
+  list,
+} from '../data/site';
+
+/**
+ * /service — composición de §7:
+ *
+ *   Hero de página interna
+ *   Marcas de servicio oficial
+ *   Qué incluye
+ *   Formulario que arma un link wa.me
+ *
+ * ─── La franja de acá es OTRO componente, no BrandStrip ────────────────────
+ * <ServiceBrands> muestra las CUATRO marcas de servicio oficial, quieta, y
+ * cada logo lleva a /contacto con el formulario ya cargado para agendar un
+ * service de esa marca.
+ *
+ * <BrandStrip> —la del Home y el footer— muestra las SIETE marcas de venta,
+ * en movimiento, y cada logo entra al catálogo filtrado.
+ *
+ * Son dos filas de logos casi idénticas con destinos distintos, y por eso
+ * Footer.astro suprime la suya en esta ruta. De Honda, MG y Volvo Bielcar
+ * además vende pero NO es servicio oficial, así que tampoco podrían mezclarse
+ * bajo un mismo título.
+ *
+ * ─── La alternancia de bandas ──────────────────────────────────────────────
+ * hero (dark) → marcas (dark) → qué incluye (RAISED) → formulario (light).
+ * "Qué incluye" va en --surface-dark-raised y no en --surface-dark porque si
+ * no serían tres bandas del mismo valor seguidas y el bloque desaparecería:
+ * en este sitio la separación es contraste de banda, no sombra (§1, §4). El
+ * formulario tiene que ser claro, eso lo fija §5.4.
+ *
+ * EXCEPCIÓN pedida por el usuario (ver ledger, sesión 15): el hero ya no es
+ * `--surface-dark` plano, lleva una foto full-bleed (`PhotoHero.astro`).
+ * Se verificó que el razonamiento de arriba SIGUE valiendo: el degradado del
+ * hero (`linear-gradient(to top, rgba(0,0,0,.75), transparent 60%)`)
+ * converge a un negro casi opaco en el pie de la sección, que es donde se
+ * pega contra `<ServiceBrands>` — visualmente ese borde sigue leyendo
+ * "oscuro" contra "oscuro", igual que cuando el hero era una banda plana.
+ * Si el día de mañana el degradado cambia (menos opacidad, otro punto de
+ * corte), hay que volver a mirar esta costura: ahí sí podría dejar de haber
+ * tres bandas oscuras seguidas y "qué incluye" podría volver a
+ * `--surface-dark`.
+ *
+ * ─── "Qué incluye" son DOS cosas, no una ───────────────────────────────────
+ * Los cuatro ítems de taller (texto de Sebastián) describen qué HACE el
+ * taller: servicio oficial, mecánica general, chapa y pintura, seguros.
+ *
+ * El bloque `.plan` de abajo responde la otra pregunta, que es la que trae a
+ * alguien a esta página: qué incluye UN service. Estuvo como <Placeholder>
+ * mucho tiempo porque un checklist inventado es peor que un texto
+ * institucional inventado — acá el visitante toma una decisión de plata sobre
+ * el dato. Se pudo publicar recién cuando el texto arrancó aclarando que el
+ * plan lo define cada marca. Ver SERVICE_INCLUDES en site.ts.
+ */
+const taller = SERVICES.filter((s) => s.scope === 'taller');
+const brands = list(SERVICE_BRANDS);
+
+/**
+ * SOLO la línea del taller.
+ *
+ * Este bloque se titula "Contacto directo del taller" y hasta recién listaba
+ * los tres fijos de la empresa, dos de los cuales son de ventas. Era una
+ * afirmación falsa con consecuencia práctica: alguien llamaba a ventas para
+ * agendar un service y le pasaban con otro. Ahora sale de `CONTACT.service` y
+ * el título dice la verdad.
+ */
+const taller_contact = CONTACT.service;
+const tallerWa = waLink('Hola, quiero hacer una consulta por service.', 'service');
+---
+
+<Base
+  title="Service oficial"
+  description={`Servicio oficial ${brands} en Bielcar Automóviles. Taller multimarca, chapa y pintura. Agende su service por WhatsApp. ${site.address}.`}
+>
+  <PhotoHero
+    image={PHOTOS.serviceHero}
+    title="Service oficial"
+    lede="Mantenimiento y reparación con repuestos originales, técnicos especializados y taller multimarca."
+  />
+
+  <ServiceBrands />
+
+  <section class="incluye band band--raised">
+    <div class="container">
+      <div class="incluye__head">
+        <p class="eyebrow">Qué incluye</p>
+        <h2 class="h2 incluye__title">Todos los servicios del taller.</h2>
+      </div>
+
+      <ul class="incluye__grid">
+        {
+          taller.map((item) => (
+            <li class="item">
+              <Icon name={item.icon} size={40} class="item__icon" />
+              <h3 class="item__title">{item.title}</h3>
+              <p class="item__line">{item.line}</p>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="plan">
+        <h3 class="h3 plan__title">Mantenimiento programado</h3>
+        <p class="plan__lede">{SERVICE_OFFICIAL_NOTE}</p>
+
+        {/* Esta salvedad va ANTES de la lista y no después: es lo que convierte
+            la enumeración en "así funciona un service" en vez de "este es
+            nuestro checklist". Ver la nota de SERVICE_INCLUDES en site.ts. */}
+        <p class="plan__note">{SERVICE_SCHEDULE_NOTE}</p>
+
+        <ul class="plan__list">
+          {SERVICE_INCLUDES.map((item) => <li>{item}</li>)}
+        </ul>
+
+        <p class="plan__approval">{SERVICE_APPROVAL_NOTE}</p>
+      </div>
+
+      <div class="incluye__direct">
+        <p class="incluye__direct-label">Contacto directo del taller</p>
+        <ul class="incluye__channels">
+          <li>
+            <Icon name="phone" size={20} />
+            <span>
+              {
+                taller_contact.phones.map((p, i) => (
+                  <>
+                    {i > 0 && <span aria-hidden="true"> · </span>}
+                    <a href={p.href}>{p.display}</a>
+                  </>
+                ))
+              }
+            </span>
+          </li>
+          <li>
+            <Icon name="whatsapp" size={20} />
+            {
+              tallerWa ? (
+                <a href={tallerWa} target="_blank" rel="noopener noreferrer">
+                  {taller_contact.mobile}
+                </a>
+              ) : (
+                <Placeholder what="WhatsApp del taller" from="Sebastián" />
+              )
+            }
+          </li>
+          <li>
+            <Icon name="mail" size={20} />
+            {
+              SERVICE_EMAIL ? (
+                <a href={`mailto:${SERVICE_EMAIL}`}>{SERVICE_EMAIL}</a>
+              ) : (
+                <Placeholder what="mail de service" from="Sebastián" />
+              )
+            }
+          </li>
+          <li>
+            <Icon name="clock" size={20} />
+            <span>{site.hours}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <ServiceForm />
+</Base>
+
+<style>
+  .incluye__head {
+    max-width: 62ch;
+  }
+
+  .incluye__title {
+    margin-top: var(--space-3);
+  }
+
+  .incluye__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-12) var(--space-16);
+    list-style: none;
+    margin: var(--space-16) 0 0;
+    padding: 0;
+  }
+
+  /* Sobre banda oscura el ícono va en --brand-bright y no en --brand: §2.2 da
+     ~4.2:1 para --brand contra el fondo oscuro, que no alcanza. */
+  .item__icon {
+    color: var(--brand-bright);
+  }
+
+  .item__title {
+    margin-top: var(--space-4);
+    font-family: var(--font-body);
+    font-size: 18px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--text-on-dark);
+  }
+
+  .item__line {
+    margin-top: var(--space-2);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--text-on-dark-muted);
+    max-width: 46ch;
+  }
+
+  .plan {
+    margin-top: var(--space-16);
+    padding-top: var(--space-12);
+    border-top: 1px solid var(--rule-on-dark);
+    max-width: 78ch;
+  }
+
+  .plan__lede {
+    margin-top: var(--space-4);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--text-on-dark-muted);
+    max-width: 62ch;
+  }
+
+  .plan__note {
+    margin-top: var(--space-8);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--text-on-dark-muted);
+  }
+
+  .plan__list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3) var(--space-12);
+    margin: var(--space-6) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .plan__list li {
+    position: relative;
+    padding-left: var(--space-6);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--text-on-dark);
+  }
+
+  /* Viñeta propia y no `list-style`: el marcador nativo no se puede colorear
+     de forma consistente entre navegadores y acá tiene que leerse como acento
+     de marca, no como texto. */
+  .plan__list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 6px;
+    height: 6px;
+    background: var(--brand-bright);
+  }
+
+  .plan__approval {
+    margin-top: var(--space-8);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--text-on-dark-faint);
+    max-width: 62ch;
+  }
+
+  @media (max-width: 699px) {
+    .plan__list {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .incluye__direct {
+    margin-top: var(--space-16);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--rule-on-dark);
+  }
+
+  .incluye__direct-label {
+    font-family: var(--font-body);
+    font-size: var(--fs-eyebrow);
+    line-height: var(--lh-eyebrow);
+    font-weight: 500;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--text-on-dark-faint);
+  }
+
+  .incluye__channels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4) var(--space-12);
+    list-style: none;
+    margin: var(--space-6) 0 0;
+    padding: 0;
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--text-on-dark-muted);
+  }
+
+  .incluye__channels li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .incluye__channels svg {
+    flex-shrink: 0;
+    color: var(--brand-bright);
+  }
+
+  .incluye__channels a {
+    color: var(--text-on-dark-muted);
+    text-decoration: none;
+  }
+
+  .incluye__channels a:hover {
+    color: var(--brand-bright);
+  }
+
+  @media (max-width: 899px) {
+    .incluye__grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-8);
+      margin-top: var(--space-12);
+    }
+
+    .incluye__direct {
+      margin-top: var(--space-12);
+    }
+  }
+</style>

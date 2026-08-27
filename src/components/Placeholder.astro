@@ -1,0 +1,24 @@
+---
+/**
+ * Marca un dato que todavía no tenemos.
+ *
+ * Se ve horrible a propósito: amarillo con borde punteado. La regla del
+ * proyecto es que un hueco visible es mejor que contenido plausible pero
+ * falso que se cuele a producción.
+ *
+ * Los estilos viven en base.css (.placeholder) para que sirvan también donde
+ * el markup se arma a mano.
+ */
+interface Props {
+  /** Qué falta, en minúscula. Se renderiza como "[FALTA: {what}]". */
+  what: string;
+  /** Quién lo tiene que mandar. Solo informativo, va al title. */
+  from?: string;
+}
+
+const { what, from } = Astro.props;
+---
+
+<span class="placeholder" title={from ? `Lo tiene que mandar: ${from}` : undefined}>
+  [FALTA: {what}]
+</span>

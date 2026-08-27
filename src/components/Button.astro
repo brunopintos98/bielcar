@@ -1,0 +1,121 @@
+---
+import Icon from './Icon.astro';
+import Placeholder from './Placeholder.astro';
+
+/**
+ * Botones — §5.3.
+ *
+ * El color de acción es el verde de WhatsApp, no el petróleo (§2.1). NO hay
+ * variante sólida de marca: si un CTA parece necesitar una, el contenido está
+ * mal — o debería ir a WhatsApp, o no merece jerarquía primaria.
+ *
+ * Protección importante: si `href` viene en null (típicamente porque waLink()
+ * no tiene número todavía), este componente renderiza un <Placeholder> en vez
+ * de un link roto. Un `wa.me/null` en producción es peor que un hueco amarillo.
+ */
+interface Props {
+  variant?: 'action' | 'ghost-dark' | 'ghost-light' | 'text';
+  /** null = el dato todavía no existe. Se renderiza el placeholder. */
+  href?: string | null;
+  /** Qué falta, si href es null. Ej: 'número de WhatsApp'. */
+  missing?: string;
+  external?: boolean;
+  class?: string;
+}
+
+const {
+  variant = 'ghost-dark',
+  href,
+  missing,
+  external = false,
+  class: className,
+} = Astro.props;
+
+const isMissing = href === null || href === undefined;
+const rel = external ? 'noopener noreferrer' : undefined;
+const target = external ? '_blank' : undefined;
+---
+
+{
+  isMissing && missing ? (
+    <Placeholder what={missing} from="Sebastián" />
+  ) : (
+    <a class:list={['btn', `btn--${variant}`, className]} href={href} rel={rel} target={target}>
+      {variant === 'action' && <Icon name="whatsapp" size={20} />}
+      {variant === 'text' && <Icon name="chevron-right" size={18} class="btn__chevron" />}
+      <span><slot /></span>
+    </a>
+  )
+}
+
+<style>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-family: var(--font-body);
+    font-size: var(--fs-button);
+    line-height: var(--lh-button);
+    font-weight: 500;
+    letter-spacing: var(--tracking-button);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition:
+      background-color var(--dur) var(--ease),
+      border-color var(--dur) var(--ease),
+      color var(--dur) var(--ease);
+  }
+
+  /* Acción: la única variante sólida del sistema. Siempre WhatsApp. */
+  .btn--action {
+    padding: var(--space-4) var(--space-8);
+    background: var(--whatsapp);
+    color: #fff;
+    border: 1px solid var(--whatsapp);
+  }
+
+  .btn--action:hover {
+    background: var(--whatsapp-hover);
+    border-color: var(--whatsapp-hover);
+  }
+
+  .btn--ghost-dark {
+    padding: var(--space-4) var(--space-8);
+    background: transparent;
+    color: var(--text-on-dark);
+    border: 1px solid var(--rule-strong);
+  }
+
+  .btn--ghost-dark:hover {
+    border-color: var(--brand-bright);
+    color: var(--brand-bright);
+  }
+
+  .btn--ghost-light {
+    padding: var(--space-4) var(--space-8);
+    background: transparent;
+    color: var(--text-on-light);
+    border: 1px solid var(--rule-on-light);
+  }
+
+  .btn--ghost-light:hover {
+    border-color: var(--brand-deep);
+    color: var(--brand-deep);
+  }
+
+  /* Texto: "Volver al listado", chevron a la izquierda */
+  .btn--text {
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--brand-bright);
+  }
+
+  .btn--text .btn__chevron {
+    transform: rotate(180deg);
+  }
+
+  .btn--text:hover {
+    color: var(--text-on-dark);
+  }
+</style>

@@ -1,0 +1,336 @@
+---
+import { Image } from 'astro:assets';
+import Icon from './Icon.astro';
+import Placeholder from './Placeholder.astro';
+import { PHOTOS } from '../data/site';
+
+/**
+ * Tres accesos al catálogo — §1 y §7.
+ *
+ * Este bloque es el que REEMPLAZA la grilla 2x2 "Comprar / Vender / Permutar /
+ * Consignar" de premiumcars. No se copia esa grilla porque **Bielcar no
+ * consigna** (§5.11) y con tres celdas de cuatro queda coja. Lo que se conserva
+ * es el tratamiento: imagen full-bleed, label en la esquina inferior izquierda,
+ * radio 0, sin caja ni sombra.
+ *
+ * Las fotos las mandó Sebastián. Van como <img> y no como background-image —al
+ * revés de lo que hace el plugin en el listado— porque así se puede dar `alt`,
+ * `loading` y `decoding`. La primera va eager: está arriba del fold en mobile.
+ *
+ * El fallback a ícono + <Placeholder> sigue en el código a propósito: si mañana
+ * se agrega un cuarto acceso sin foto, el tile no se rompe, avisa.
+ *
+ * ─── Los hrefs ─────────────────────────────────────────────────────────────
+ * Van a nuestras rutas, no a URLs con `ma_status`. Cada página ya inicializa el
+ * plugin con su `condition` (NEW / USED / ALL), así que el filtro está resuelto
+ * del lado del init y no depende de replicar la inconsistencia
+ * `USED` / `used` que el plugin usa en sus propios links (§6.4).
+ */
+const tiles = [
+  {
+    href: '/nuevos',
+    eyebrow: '0km',
+    title: 'Nuevos',
+    line: 'Listos para estrenar.',
+    icon: 'car-front' as const,
+    photo: PHOTOS.tileNuevos,
+  },
+  {
+    href: '/usados',
+    eyebrow: 'Usados',
+    title: 'Seleccionados',
+    line: 'Revisados y listos para entregar.',
+    icon: 'car' as const,
+    photo: PHOTOS.tileUsados,
+  },
+  {
+    href: '/vehiculos',
+    eyebrow: 'Todos',
+    title: 'Catálogo completo',
+    line: '0km y usados en un solo listado.',
+    icon: 'repeat' as const,
+    photo: PHOTOS.tileTodos,
+  },
+];
+
+const missing = tiles.filter((t) => !t.photo).map((t) => t.eyebrow);
+
+/**
+ * `sizes` del tile: arriba de 1250px son 3 columnas a ancho de viewport, o sea
+ * ~33vw; abajo se apilan y ocupan 100vw. Los tiles son bastante más chicos que
+ * el hero, así que la variante de 1920 no hace falta.
+ *
+ * (Va acá y no como comentario JSX al lado del <Image>: ese <Image> vive
+ * dentro de un ternario, y meterle un `{/* *\/}` al lado le deja dos hijos
+ * donde va uno.)
+ */
+---
+
+<section class="tiles" aria-label="Accesos al catálogo">
+  {
+    missing.length > 0 && (
+      <div class="tiles__missing">
+        <Placeholder what={`foto para el tile de ${missing.join(', ')}`} from="Sebastián" />
+      </div>
+    )
+  }
+
+  <ul class="tiles__list">
+    {
+      tiles.map((tile, i) => (
+        <li>
+          <a class="tile" href={tile.href}>
+            <span class="tile__media" data-empty={tile.photo ? undefined : 'true'}>
+              {tile.photo ? (
+                <Image
+                  class="tile__img"
+                  src={tile.photo.src}
+                  alt={tile.photo.alt}
+                  widths={[480, 720, 1080]}
+                  sizes="(min-width: 1250px) 33vw, 100vw"
+                  format="webp"
+                  quality={72}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
+                />
+              ) : (
+                <Icon name={tile.icon} size={48} class="tile__icon" />
+              )}
+            </span>
+
+            <span class="tile__label">
+              <span class="eyebrow tile__eyebrow">{tile.eyebrow}</span>
+              <span class="h3 tile__title">{tile.title}</span>
+              <span class="tile__line">
+                {tile.line}
+                <Icon name="arrow-right" size={18} class="tile__arrow" />
+              </span>
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<style>
+  .tiles {
+    background: var(--surface-dark);
+  }
+
+  .tiles__missing {
+    display: flex;
+    justify-content: center;
+    padding-bottom: var(--space-6);
+  }
+
+  /* A ancho de viewport completo y sin gaps: la separación entre tiles es el
+     borde, no el aire. Es el patrón de la referencia (§1). */
+  .tiles__list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .tile {
+    position: relative;
+    display: block;
+    /* Apaisado, no vertical, y a 3/2 exacto.
+       Las tres fotos son apaisadas: `nuevos` es 1920x1080 (1.78) y `usados` /
+       `todos` son 1920x1280 (1.5). Con `object-fit: cover` la imagen SIEMPRE
+       llena la caja, así que no se puede "achicar" la foto sin letterbox: lo
+       único que se puede mover es el aspecto del tile.
+
+       Con el tile en 3/2 = 1.5 exacto:
+         · `usados` y `todos` coinciden con el aspecto del tile → se ven
+           ENTERAS, sin recorte.
+         · `nuevos`, que tiene más aspecto, sigue escalando por altura, pero el
+           tile es más bajo que a 4/3 y eso baja la escala un 11%: el auto
+           queda más chico y se ve el 84% del ancho en vez del 75%.
+
+       Ese 11% es todo lo que se puede achicar sin letterbox. Si hace falta más,
+       la salida es otra foto de `nuevos` con el auto más lejos, no más CSS.
+
+       Si algún día las fotos vienen verticales, esto vuelve a 3/4 y el tile
+       recupera la proporción de la referencia. */
+    aspect-ratio: 3 / 2;
+    color: var(--text-on-dark);
+    text-decoration: none;
+    overflow: hidden;
+    border-left: 1px solid var(--rule-on-dark);
+  }
+
+  .tiles__list li:first-child .tile {
+    border-left: 0;
+  }
+
+  .tile__media {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    /* §4: la card no se mueve, solo la foto. */
+    transition: transform var(--dur) var(--ease);
+  }
+
+  /* ─── Posicionada, NO un grid item ──────────────────────────────────────
+     Antes era `width:100%; height:100%` como hijo del grid de .tile__media, y
+     estaba mal: la fila del grid es `auto`, así que el `height:100%` es un
+     porcentaje contra una pista de tamaño indefinido. El resultado dependía
+     del browser y en los dos casos era un defecto visible:
+
+       · Chrome  → la fila se dimensiona por contenido y la imagen queda de su
+                   alto natural. Medido a 393px: caja de 220px, imagen de 262.
+                   `object-fit: cover` nunca entra en juego —la caja ya tiene
+                   la proporción del archivo— y el recorte lo termina haciendo
+                   el `overflow:hidden` del tile, comiéndose 42px POR ABAJO en
+                   vez de recortar parejo.
+       · iOS Safari → al revés: la imagen no llegaba a cubrir el tile y quedaba
+                   una franja de --surface-dark arriba. Se veía como una línea
+                   más CLARA que el resto, porque el degradado de .tile::after
+                   deja el pie del tile anterior casi en negro puro (2/255)
+                   contra el 13/255 del fondo.
+
+     `position:absolute; inset:0` le da una caja definida y saca el alto de la
+     ecuación del grid. Ahí sí `object-fit: cover` hace el recorte, centrado y
+     parejo, igual en todos los browsers.
+
+     .tile__media sigue siendo grid: eso es para centrar el <Icon> del fallback
+     cuando un tile no tiene foto. La imagen ya no participa de esa grilla. */
+  .tile__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Centro de la foto en los dos ejes. En las tres el auto está centrado. */
+    object-position: center;
+    /* Las tres fotos son de producción, con cielo claro y asfalto gris medio:
+       el label caía sobre valores altos. Bajar el brillo acá y no subir el
+       degradado a negro pleno conserva el color del auto, que es lo que el
+       tile tiene que vender.
+
+       0.82 dejaba las tres fotos leyéndose casi negras: 0.92 devuelve carrocería
+       y fondo sin volver a subir los valores debajo del label, que igual quedan
+       tapados por el degradado. */
+    filter: brightness(0.92);
+  }
+
+  .tile__media[data-empty] {
+    background-image: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--brand-deep) 35%, var(--surface-dark-raised)),
+      var(--surface-dark) 75%
+    );
+  }
+
+  .tile__icon {
+    color: var(--brand-bright);
+    opacity: 0.55;
+  }
+
+  /* DESVIACIÓN DE §4: el documento fija `scale(1.03)` para el hover de card.
+     Acá va 1.07 por pedido explícito. El tile es una superficie mucho más
+     grande que una card de vehículo, así que el mismo 3% se lee como nada;
+     el 1.03 del listado (multiaviso.css) queda como está. */
+  .tile:hover .tile__media {
+    transform: scale(1.07);
+  }
+
+  /* Degradado de legibilidad. §5.2 propone uno de dos paradas
+     (`rgba(0,0,0,.75)` → `transparent 60%`), pero con estas fotos no alcanza:
+     una parada intermedia hace que la zona del label sea casi opaca sin que el
+     corte se note a mitad de la imagen. Un degradado de dos paradas que llegue
+     a esta opacidad abajo se ve como una banda. */
+  .tile::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.92) 0%,
+      rgba(0, 0, 0, 0.55) 32%,
+      rgba(0, 0, 0, 0.1) 66%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  .tile__label {
+    position: absolute;
+    z-index: 1;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  /* 0KM / USADOS / TODOS es la etiqueta que dice a qué listado entra el tile,
+     así que sube de --fs-eyebrow (13px) a --fs-body (16px). El título de abajo
+     queda en --fs-h3: es el nombre descriptivo, no la categoría. */
+  .tile__eyebrow {
+    font-size: var(--fs-body);
+    color: var(--brand-bright);
+  }
+
+  .tile__title {
+    font-family: var(--font-display);
+  }
+
+  /* --text-on-dark-muted sobre foto queda blando aunque el degradado lo tape.
+     Va blanco pleno; la jerarquía la dan los tamaños, no el color. */
+  .tile__line {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--fs-body-sm);
+    line-height: var(--lh-body-sm);
+    color: var(--text-on-dark);
+  }
+
+  .tile__arrow {
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .tile:hover .tile__arrow {
+    transform: translateX(4px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tile:hover .tile__media,
+    .tile:hover .tile__arrow {
+      transform: none;
+    }
+  }
+
+  /* Tres columnas SOLO a partir de 1250px. Debajo de eso cada tile queda de
+     ~380px o menos y el título entra en dos o tres renglones sobre la foto, que
+     es donde el bloque empieza a verse apretado. Se apilan bastante antes del
+     breakpoint de mobile del resto del sitio (900px) a propósito: acá manda el
+     ancho que necesita el contenido, no el dispositivo. */
+  @media (max-width: 1249px) {
+    .tiles__list {
+      grid-template-columns: 1fr;
+    }
+
+    /* En una columna se puede abrir más, y 16/9 es el aspecto nativo de una de
+       las tres fotos: ahí se ve entera, sin recorte. */
+    .tile {
+      aspect-ratio: 16 / 9;
+      border-left: 0;
+      border-top: 1px solid var(--rule-on-dark);
+    }
+
+    .tiles__list li:first-child .tile {
+      border-top: 0;
+    }
+
+    .tile__label {
+      bottom: var(--space-6);
+    }
+  }
+</style>

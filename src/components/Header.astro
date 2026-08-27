@@ -1,0 +1,276 @@
+---
+import Icon from './Icon.astro';
+import { cleanPath, LOGO, site, ROUTES } from '../data/site';
+
+/**
+ * Header sticky — §5.1.
+ *
+ * En premiumcars el nav está partido en dos grupos; acá va uno solo alineado a
+ * la derecha porque hay menos items.
+ *
+ * El logo ya no es el wordmark tipográfico provisorio del scaffold: se usa la
+ * variante `onDark` derivada del PNG que mandó Sebastián (ver LOGO en site.ts).
+ * Sigue siendo un bitmap de 254px de ancho — a 32px de alto da ~2.2x de
+ * densidad, que alcanza. El vector sigue pedido para cuando haya que escalarlo.
+ */
+/**
+ * Los ítems salen de ROUTES (site.ts), que es también de donde sale el
+ * sitemap. Estaban duplicados y esa es la forma clásica de que una página
+ * nueva entre al nav —porque se ve— y quede fuera del XML durante meses.
+ *
+ * '/' está en ROUTES con `nav: false`: al Home se entra por el logo.
+ */
+const nav = ROUTES.filter((r) => r.nav);
+
+const path = cleanPath(Astro.url.pathname);
+---
+
+<header class="header">
+  <div class="header__inner">
+    <a class="logo" href="/" aria-label={`${site.name} — Inicio`}>
+      <img
+        class="logo__img"
+        src={LOGO.onDark}
+        alt={site.name}
+        width={LOGO.width}
+        height={LOGO.height}
+      />
+    </a>
+
+    <nav class="nav" aria-label="Navegación principal">
+      <ul class="nav__list">
+        {
+          nav.map((item) => (
+            <li>
+              <a
+                href={item.path}
+                class:list={['nav__link', { 'nav__link--active': path === item.path }]}
+                aria-current={path === item.path ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <button class="burger" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="drawer">
+      <Icon name="menu" size={24} />
+    </button>
+  </div>
+</header>
+
+<div class="drawer" id="drawer" hidden>
+  <div class="drawer__head">
+    <img
+      class="logo__img"
+      src={LOGO.onDark}
+      alt={site.name}
+      width={LOGO.width}
+      height={LOGO.height}
+    />
+    <button class="burger" type="button" data-close aria-label="Cerrar menú">
+      <Icon name="x" size={24} />
+    </button>
+  </div>
+  <nav aria-label="Navegación principal (móvil)">
+    <ul class="drawer__list">
+      {
+        nav.map((item) => (
+          <li>
+            <a
+              href={item.path}
+              class:list={['drawer__link', { 'drawer__link--active': path === item.path }]}
+              aria-current={path === item.path ? 'page' : undefined}
+            >
+              {item.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+</div>
+
+<style>
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+    height: var(--header-h);
+    background: color-mix(in srgb, var(--surface-dark-raised) 85%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule-on-dark);
+  }
+
+  .header__inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    height: 100%;
+    max-width: var(--container-wide);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: var(--text-on-dark);
+    flex-shrink: 0;
+  }
+
+  /* El alto manda y el ancho sale del aspecto; los atributos width/height del
+     <img> están para reservar el espacio y evitar el salto de layout. */
+  .logo__img {
+    display: block;
+    height: 32px;
+    width: auto;
+  }
+
+  .nav {
+    margin-left: auto;
+  }
+
+  .nav__list {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav__link {
+    font-size: var(--fs-body-sm);
+    color: var(--text-on-dark-muted);
+    text-decoration: none;
+    transition: color var(--dur) var(--ease);
+  }
+
+  .nav__link:hover {
+    color: var(--text-on-dark);
+  }
+
+  .nav__link--active {
+    color: var(--brand-bright);
+  }
+
+  .burger {
+    display: none;
+    margin-left: auto;
+    padding: var(--space-2);
+    background: none;
+    border: 0;
+    color: var(--text-on-dark);
+    cursor: pointer;
+  }
+
+  /* ------------------------------------------------------------- drawer */
+
+  .drawer {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-drawer);
+    background: var(--surface-dark);
+    padding: var(--gutter);
+    overflow-y: auto;
+  }
+
+  .drawer[hidden] {
+    display: none;
+  }
+
+  .drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--header-h);
+    margin-bottom: var(--space-8);
+  }
+
+  .drawer__head .burger {
+    display: block;
+    margin-left: 0;
+  }
+
+  .drawer__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .drawer__link {
+    font-family: var(--font-display);
+    font-size: var(--fs-h3);
+    color: var(--text-on-dark);
+    text-decoration: none;
+  }
+
+  .drawer__link--active {
+    color: var(--brand-bright);
+  }
+
+  @media (max-width: 899px) {
+    .nav {
+      display: none;
+    }
+
+    .burger {
+      display: block;
+    }
+
+    .logo__img {
+      height: 28px;
+    }
+  }
+</style>
+
+<script>
+  const drawer = document.getElementById('drawer');
+  const openBtn = document.querySelector<HTMLButtonElement>('.header .burger');
+  const closeBtn = document.querySelector<HTMLButtonElement>('[data-close]');
+
+  function setOpen(open: boolean) {
+    if (!drawer) return;
+    drawer.hidden = !open;
+    document.body.style.overflow = open ? 'hidden' : '';
+    openBtn?.setAttribute('aria-expanded', String(open));
+
+    /* Contención de foco. El drawer es full-screen y tapa todo, pero eso es
+       solo pintura: sin `inert`, el tabulador sigue recorriendo el header, el
+       contenido y el footer que están debajo, y el anillo de foco desaparece
+       de la pantalla mientras la persona sigue tabulando a ciegas.
+
+       Se marca todo lo que es hermano del drawer y no el drawer. El orden
+       importa: al cerrar se saca `inert` ANTES de devolver el foco al botón,
+       que vive dentro del <header> que estaba inerte. */
+    Array.from(document.body.children).forEach((el) => {
+      if (el === drawer) return;
+      if (open) {
+        el.setAttribute('inert', '');
+      } else {
+        el.removeAttribute('inert');
+      }
+    });
+
+    if (open) {
+      closeBtn?.focus();
+    } else {
+      openBtn?.focus();
+    }
+  }
+
+  openBtn?.addEventListener('click', () => setOpen(true));
+  closeBtn?.addEventListener('click', () => setOpen(false));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawer && !drawer.hidden) setOpen(false);
+  });
+</script>

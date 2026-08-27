@@ -1,0 +1,12 @@
+# Bielcar Automóviles
+#
+# El catálogo de vehículos lo renderiza el plugin de Multiaviso en el cliente,
+# y el detalle de cada vehículo vive en la MISMA URL del listado con
+# `?ma_carid=`. Esas URLs son reales y compartibles, así que no se bloquea
+# ningún querystring: bloquear `ma_carid` sacaría del índice todos los
+# vehículos, que es justamente lo que hay que indexar.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://bielcar.vercel.app/sitemap.xml

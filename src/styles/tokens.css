@@ -1,0 +1,179 @@
+/* ==========================================================================
+   tokens.css — DESIGN.md §2 (color), §3 (tipografía), §4 (layout/forma)
+   --------------------------------------------------------------------------
+   OJO: el plugin de Multiaviso define `:root { --screen-height: 880px }`.
+   No usar ese nombre. Todo lo nuestro va prefijado por rol, no por marca,
+   salvo los tokens de color de marca que ya llevan `--brand-*`.
+
+   `:root` y `html` son el mismo elemento, así que declarar acá no aísla nada
+   del plugin (DESIGN §6.2 lo aclara, corrigiendo a §6.3). La única protección
+   real es no repetir nombres — y no los repetimos.
+   ========================================================================== */
+
+:root {
+  /* ---------------------------------------------------------------- color */
+  /* Superficies */
+  --surface-dark:        #0D0D0D;  /* banda oscura, fondo por defecto */
+  --surface-dark-raised: #171717;  /* header sticky, filtros, footer interno */
+  --surface-light:       #F2F2F2;  /* banda clara: formularios, servicios */
+
+  /* Texto sobre oscuro */
+  --text-on-dark:        #FFFFFF;
+  --text-on-dark-muted:  #B0B0B0;
+  --text-on-dark-faint:  #6E6E6E;  /* labels de ficha, metadatos. Nunca prosa */
+
+  /* Texto sobre claro */
+  --text-on-light:       #141414;
+  --text-on-light-muted: #4A4A4A;
+
+  /* Marca — azul petróleo Bielcar */
+  --brand:               #007F9E;  /* superficies, bordes, íconos grandes */
+  --brand-deep:          #005E75;  /* hover sobre --brand; texto sobre claro */
+  --brand-bright:        #1F9CBF;  /* TEXTO sobre oscuro: nav activo, año|km */
+  --brand-wash:          #E8F3F7;  /* fondo sutil sobre banda clara, chips */
+  --brand-contrast:      #FFFFFF;
+
+  /* WhatsApp — color de acción (§2.1: el verde es el color de conversión) */
+  --whatsapp:            #128C3E;
+  --whatsapp-hover:      #0E7433;
+
+  /* Bordes y reglas */
+  --rule-on-dark:        rgba(255, 255, 255, 0.10);
+  --rule-on-light:       rgba(0, 0, 0, 0.12);
+  --rule-strong:         rgba(255, 255, 255, 0.28);
+
+  /* ----------------------------------------------------------- tipografía */
+  /* §3 dejaba la familia SIN RESOLVER, con Sora + Inter como propuesta y Space
+     Grotesk anotada como alternativa "más técnica y con más carácter en los
+     números, que es donde más se ve (precios grandes)".
+
+     RESUELTO: Space Grotesk. Se decidió mirando specimens del texto real
+     —"USD 49.990" a 34px sobre #0D0D0D— contra Sora, Archivo, Bricolage
+     Grotesque y Chivo. En un sitio de autos el número es el elemento que más
+     se mira, y es justo donde Sora no aporta nada: el 4 abierto y la cola
+     recta del 9 de Space Grotesk le dan carácter sin volverse disfraz.
+
+     Body sigue en Inter: el contraste display/body es lo que hace que el
+     precio destaque. Cambiar esta línea es cambiar todo el sitio. */
+  --font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Escala §3 — valores desktop. El bloque mobile los pisa más abajo. */
+  --fs-hero:      56px;  --lh-hero:      1.1;
+  --fs-h2:        40px;  --lh-h2:        1.15;
+  --fs-h3:        28px;  --lh-h3:        1.25;
+  --fs-price:     34px;  --lh-price:     1;
+  --fs-card:      20px;  --lh-card:      1.3;
+  --fs-eyebrow:   13px;  --lh-eyebrow:   1.4;
+  --fs-body:      16px;  --lh-body:      1.65;
+  --fs-body-sm:   14px;  --lh-body-sm:   1.6;
+  --fs-label:     13px;  --lh-label:     1.5;
+  --fs-button:    15px;  --lh-button:    1;
+
+  --tracking-tight:   -0.01em;  /* h1, h2 en minúscula */
+  --tracking-caps:     0.12em;  /* eyebrow / uppercase */
+  --tracking-button:   0.02em;
+
+  /* --------------------------------------------------------------- layout */
+  --container:      1280px;  /* contenido tipografiado */
+  --container-wide: 1600px;  /* grillas de vehículos */
+  --gutter:         24px;
+
+  --section-y:      96px;
+
+  --header-h:       72px;
+
+  /* Escala de espaciado, base 4 */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* ---------------------------------------------------------------- forma */
+  --radius-none: 0;       /* imágenes, cards, tiles, inputs */
+  --radius-sm:   2px;     /* botones */
+  --radius-full: 9999px;  /* solo FAB y pills de filtro activo */
+
+  /* La única sombra permitida: el FAB flota de verdad (§4) */
+  --shadow-fab: 0 4px 16px rgba(0, 0, 0, 0.35);
+
+  /* ----------------------------------------------------------- movimiento */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur:  220ms;
+
+  /* ----------------------------------------------------------------- mapa */
+  /* Tema oscuro del embed de Google Maps.
+     Google no ofrece tema oscuro en el iframe sin API key, así que se invierte
+     por filtro. Lo usan el footer y /contacto, y tienen que verse igual — por
+     eso es un token y no una regla repetida en dos componentes.
+
+     El `brightness` NO es opcional: con solo `grayscale(1) invert(0.92)` el
+     fondo queda en ~#141414 y las calles en ~#292929, o sea 20 puntos de
+     separación sobre un total de 255. El mapa se lee apagado, como si estuviera
+     deshabilitado. El 1.75 lleva el fondo a ~#242424 y las calles a ~#4A4A4A,
+     y empuja las etiquetas a blanco pleno.
+
+     Calibrado comparando variantes sobre una captura real del footer, no a ojo.
+
+     ─── El grayscale se sacó una vez y se volvió atrás ─────────────────────
+     Vale dejarlo escrito para no repetir el experimento.
+
+     No se puede estilar nada adentro del iframe: es otro origen y el filtro
+     cae sobre todos los píxeles por igual. Pero el pin de Google es ROJO, el
+     inverso del rojo es cian, y la marca de Bielcar es petróleo — así que
+     sacando el grayscale el marcador caía solo en un cian de la familia de
+     `--brand-bright` (~#43FFFF con este brillo). Tentador, y no funcionó: sin
+     grayscale TODOS los colores sobreviven a la inversión, y un mapa con el
+     agua marrón y los parques violeta cuesta más de lo que vale un pin del
+     color correcto.
+
+     El pin queda blanco. Se distingue igual: es la única forma de gota del
+     mapa.
+
+     Si alguna vez se quiere el pin en el color de marca de verdad, el camino
+     es dejar el iframe y pasar a la Static Maps API con
+     `markers=color:0x007F9E` más un `style=` oscuro nativo — eso además
+     borraría todo este filtro. Necesita API key de Google con facturación
+     habilitada y pierde el pan/zoom.
+
+     Tampoco lleva `hue-rotate`: después de `grayscale(1)` no queda matiz que
+     rotar. Estaba y era un no-op. */
+  --map-filter: grayscale(1) invert(0.92) brightness(1.75);
+
+  /* ------------------------------------------------------------ elevación */
+  /* El PISO de esta escala lo fija el plugin, no nosotros.
+     `#MultiavisoWrapper #ItemWrapper` declara `z-index: 300`, así que con el
+     header en 100 el detalle del vehículo se dibujaba ENCIMA y bloqueaba los
+     clicks en el nav — el síntoma era "scrolleo y no puedo tocar el header".
+     Todo lo nuestro arranca en 400.
+
+     (El plugin también usa 9999 para su modal. Eso está bien: un modal debe
+     tapar todo, incluido el FAB.) */
+  --z-header:  400;
+  --z-fab:     500;  /* §5.9: por encima del header */
+  --z-filters: 550;  /* hoja de filtros en mobile: tapa header y FAB, pero no
+                        compite con el drawer — no pueden estar abiertos a la vez */
+  --z-drawer:  600;  /* menú full-screen: tapa todo lo nuestro, FAB incluido */
+}
+
+@media (max-width: 899px) {
+  :root {
+    --fs-hero:    34px;  --lh-hero:    1.15;
+    --fs-h2:      28px;  --lh-h2:      1.2;
+    --fs-h3:      22px;
+    --fs-price:   26px;
+    --fs-card:    18px;
+    --fs-eyebrow: 12px;
+    --fs-body:    15px;  --lh-body:    1.6;
+
+    --gutter:     16px;
+    --section-y:  56px;
+    --header-h:   60px;
+  }
+}

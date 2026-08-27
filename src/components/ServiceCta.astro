@@ -1,0 +1,68 @@
+---
+import Button from './Button.astro';
+import { waLink } from '../data/site';
+
+/**
+ * CTA de service por WhatsApp — §7, último bloque del Home antes del footer.
+ *
+ * Es el único CTA de conversión del Home (§5.3: el verde es el color de acción
+ * y no hay sólido de marca). Deliberadamente sin formulario: el form de service
+ * con marca / modelo / kilometraje vive en /service (§5.4) y repetirlo acá le
+ * saca el motivo de existir a esa página.
+ *
+ * Estructura de banda oscura elevada, no clara: viene después de ServicesBlock
+ * —que es la banda clara— y la alternancia es el mecanismo de separación del
+ * sitio (§1, §4). Dos bandas claras seguidas y el bloque desaparece.
+ *
+ * Si no hubiera número, <Button> renderiza un <Placeholder> en vez de un
+ * `wa.me/null`.
+ */
+/* 'service': este CTA agenda taller, así que va al WhatsApp del taller y no al
+   de ventas. Es el mismo criterio de ServiceForm. Ver CONTACT en site.ts. */
+const href = waLink('Hola, quiero agendar un service.', 'service');
+---
+
+<section class="service-cta band band--raised">
+  <div class="container service-cta__inner">
+    <div>
+      <h2 class="h2">¿Necesita un service?</h2>
+      <p class="lede service-cta__lede">
+        Escríbanos y coordinamos día y hora.
+      </p>
+    </div>
+    <div class="service-cta__action">
+      <Button variant="action" href={href} missing="número de WhatsApp" external>
+        Agendar service
+      </Button>
+    </div>
+  </div>
+</section>
+
+<style>
+  .service-cta__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  .service-cta__lede {
+    margin-top: var(--space-3);
+  }
+
+  .service-cta__action {
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 899px) {
+    .service-cta__inner {
+      flex-direction: column;
+      /* Centrado en mobile: apilado y alineado a la izquierda, el botón queda
+         colgando del borde izquierdo con todo el ancho libre a la derecha y se
+         lee como desalineado, no como una jerarquía. */
+      align-items: center;
+      gap: var(--space-8);
+      text-align: center;
+    }
+  }
+</style>

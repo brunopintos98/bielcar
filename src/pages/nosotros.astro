@@ -1,0 +1,169 @@
+---
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import PageHero from '../components/PageHero.astro';
+import Button from '../components/Button.astro';
+import Placeholder from '../components/Placeholder.astro';
+import { site, SALES_BRANDS, SERVICE_BRANDS, PHOTOS, ABOUT_PARAGRAPHS, list } from '../data/site';
+
+/**
+ * /nosotros — composición de §7: "Hero + split imagen/texto + equipo de ventas".
+ *
+ * ─── El texto institucional ya llegó ───────────────────────────────────────
+ * Lo escribió Sebastián y vive en `ABOUT_PARAGRAPHS` (site.ts). Vale la pena
+ * dejar anotado por qué esta página estuvo vacía tanto tiempo: "más de X años
+ * en plaza", "una empresa familiar", "atención personalizada" son exactamente
+ * las frases que suenan verdaderas y que nadie había confirmado. Una página
+ * "Nosotros" es donde más tienta inventar, y por eso fue la última en
+ * llenarse.
+ *
+ * La foto del local ya llegó. Sigue faltando el equipo de ventas, con
+ * <Placeholder>. El resto se afirma desde `site.ts`: dónde está el local, qué
+ * marcas vende, de cuáles es servicio oficial y qué hace el taller.
+ *
+ * La estructura queda completa igual: el día que llegue el contenido es
+ * rellenar, no construir.
+ */
+const media = PHOTOS.aboutLocal;
+const salesBrands = list(SALES_BRANDS);
+const serviceBrands = list(SERVICE_BRANDS);
+---
+
+<Base
+  title="Nosotros"
+  description={`Bielcar Automóviles, automotora en ${site.address}. Venta de 0km y usados, servicio oficial ${serviceBrands}, taller multimarca y permuta.`}
+>
+  <PageHero
+    title="Nosotros"
+    lede="Automotora, taller multimarca y servicio oficial, en un mismo lugar."
+  />
+
+  <section class="sobre band band--dark">
+    <div class="container sobre__split">
+      <div class="sobre__media">
+        {/* El contenedor es 4:3 y el archivo también, así que la foto entra
+            ENTERA — `object-fit: cover` no llega a recortar nada.
+            `sizes`: media pantalla en desktop, ancho completo apilada. */}
+        <Image
+          src={media.src}
+          alt={media.alt}
+          widths={[480, 720, 1080]}
+          sizes="(min-width: 900px) 50vw, 100vw"
+          format="webp"
+          quality={72}
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+
+      <div class="sobre__text">
+        <p class="eyebrow">Bielcar Automóviles</p>
+        <h2 class="h2 sobre__title">Estamos en {site.address}.</h2>
+
+        {/* Las dos listas de marcas salen de site.ts. Antes esta bajada seguía
+            con "además tenemos taller multimarca, chapa y pintura, y tomamos
+            usados en parte de pago", que es exactamente lo que dicen los
+            párrafos 2 y 3 del texto de Sebastián acá abajo. Se recortó a lo
+            único que el texto institucional NO dice: qué marcas son. */}
+        <p class="lede sobre__lede">
+          Vendemos 0km y usados de {salesBrands}, y somos servicio oficial de {serviceBrands}.
+        </p>
+
+        <div class="sobre__prose">
+          {ABOUT_PARAGRAPHS.map((par) => <p>{par}</p>)}
+        </div>
+
+        <div class="sobre__cta">
+          <Button variant="ghost-dark" href="/vehiculos">Ver vehículos</Button>
+          <Button variant="ghost-dark" href="/contacto">Contacto</Button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="equipo band band--raised">
+    <div class="container">
+      <p class="eyebrow">Equipo</p>
+      <h2 class="h2 equipo__title">Quiénes lo atienden.</h2>
+      <p class="lede equipo__lede">
+        La grilla de vendedores va acá, con nombre, rol y contacto directo.
+      </p>
+
+      {/* Un solo <Placeholder> y no una grilla de tarjetas vacías: no sabemos
+          ni los nombres ni CUÁNTOS son, así que dibujar tres huecos ya sería
+          afirmar un número. */}
+      <p class="equipo__missing">
+        <Placeholder what="equipo de ventas (nombres, roles y fotos)" from="Sebastián" />
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .sobre__split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-16);
+    align-items: center;
+  }
+
+  .sobre__media {
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+  }
+
+  .sobre__media :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+
+  .sobre__title {
+    margin-top: var(--space-3);
+  }
+
+  .sobre__lede {
+    margin-top: var(--space-6);
+  }
+
+  .sobre__prose {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--text-on-dark-muted);
+    /* Medida de lectura. El texto son ~160 palabras y a todo el ancho de la
+       columna los renglones pasan de 90 caracteres. */
+    max-width: 62ch;
+  }
+
+  .sobre__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-top: var(--space-12);
+  }
+
+  .equipo__title {
+    margin-top: var(--space-3);
+  }
+
+  .equipo__lede {
+    margin-top: var(--space-6);
+  }
+
+  .equipo__missing {
+    margin-top: var(--space-8);
+  }
+
+  @media (max-width: 899px) {
+    .sobre__split {
+      grid-template-columns: 1fr;
+      gap: var(--space-12);
+    }
+  }
+</style>

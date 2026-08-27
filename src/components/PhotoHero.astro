@@ -1,0 +1,165 @@
+---
+import { Image } from 'astro:assets';
+import type { Photo } from '../data/site';
+
+/**
+ * Hero de página interna CON foto — DESVIACIÓN de §5.2, pedida explícitamente.
+ *
+ * Empezó siendo `ServiceHero.astro`, exclusivo de /service, y su comentario
+ * decía que estaba separado a propósito para que nadie lo usara en las páginas
+ * de catálogo. Después el usuario pidió justamente eso, así que la separación
+ * dejó de proteger nada y el componente se generalizó. Queda escrito qué se
+ * está desviando, porque el motivo original sigue siendo real:
+ *
+ * ─── Lo que dice §5.2, y por qué ───────────────────────────────────────────
+ * "Usar exactamente este patrón [hero sin imagen] encima de cada página con
+ * Multiaviso, porque le da un marco propio a un contenido que no controlamos."
+ *
+ * ⚠️  El riesgo concreto en /nuevos, /usados y /vehiculos: el detalle de cada
+ * vehículo se renderiza IN-PLACE sobre la misma URL con `?ma_carid=` (§6.4).
+ * O sea que esta foto también aparece arriba de la ficha de un auto puntual, y
+ * la foto no tiene por qué ser ese auto. Alguien mirando el detalle de un
+ * Geely va a tener una Honda CR-V grande encima. Es el motivo por
+ * el que el documento pide el hero plano en esas tres rutas.
+ *
+ * En /service no aplica: esa página no tiene contenedor de Multiaviso.
+ *
+ * Si esto molesta en producción, la vuelta atrás es cambiar `<PhotoHero>` por
+ * `<PageHero>` en las tres páginas de catálogo — el componente sin foto sigue
+ * existiendo y sin tocar.
+ *
+ * ─── El alto NO llega al viewport, y es deliberado ─────────────────────────
+ * HomeHero ocupa la pantalla entera porque es la portada. Acá abajo hay
+ * contenido inmediato —el listado del plugin, la banda de permuta— y un hero a
+ * pantalla completa no deja asomar nada: la página se lee como una postal y no
+ * da ninguna señal de que sigue.
+ *
+ * `clamp(380px, 52svh, 560px)` es el segundo ajuste de este número. Arrancó
+ * copiando el viewport entero de HomeHero (mal: no se veía que había scroll),
+ * bajó a `clamp(300px, 42svh, 440px)` (corto: la foto quedaba en una franja) y
+ * quedó acá. La regla que lo gobierna no es un valor sino una condición: **el
+ * bloque siguiente tiene que asomar.** En una pantalla de 900px de alto esto
+ * deja ~310px de contenido a la vista debajo del hero. Si se sube más, hay que
+ * volver a comprobar eso.
+ *
+ * ─── El encuadre depende del alto ──────────────────────────────────────────
+ * `object-fit: cover` recorta según el aspecto de la CAJA, y con un hero tan
+ * apaisado el recorte es fuerte en vertical. Los archivos son todos apaisados
+ * (16:9 y 3:2), así que en desktop se recorta arriba y abajo y en mobile a los
+ * costados. `object-position: center` funciona porque en las cuatro fotos el
+ * sujeto está centrado. **Si cambia el alto de la banda, hay que volver a
+ * mirar el encuadre** — es función del aspecto de la caja, no del archivo.
+ */
+interface Props {
+  title: string;
+  lede?: string;
+  image: Photo;
+}
+
+const { title, lede, image } = Astro.props;
+---
+
+<section class="hero">
+  {/* `<Image>` y no `<img>`: Astro genera las variantes con sharp en el build
+      y emite el `srcset`. Un teléfono deja de bajar la versión de 1920px.
+
+      `sizes="100vw"` porque el hero es full-bleed — ocupa el ancho del
+      viewport siempre, sin container.
+
+      `fetchpriority="high"` + `loading="eager"`: esta es la imagen LCP de la
+      página. Sin la prioridad el navegador la trata como una imagen más y
+      compite con las fuentes y el CSS del plugin. */}
+  <Image
+    class="hero__media"
+    src={image.src}
+    alt={image.alt}
+    widths={[640, 960, 1280, 1920]}
+    sizes="100vw"
+    format="webp"
+    quality={72}
+    loading="eager"
+    decoding="async"
+    fetchpriority="high"
+  />
+
+  <div class="hero__content">
+    <div class="container">
+      <h1 class="h1">{title}</h1>
+      {lede && <p class="lede hero__lede">{lede}</p>}
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    /* A propósito MÁS BAJO que el viewport — ver la nota del frontmatter.
+       NO se usa el nombre --screen-height: el plugin ya define esa variable en
+       :root (§6.2). La primera declaración es el fallback: si el browser no
+       entiende `svh`, el `clamp()` entero se invalida y sin ella el hero se
+       quedaría sin alto. */
+    min-height: 440px;
+    min-height: clamp(380px, 52svh, 560px);
+    background: var(--surface-dark);
+    overflow: hidden;
+  }
+
+  .hero__media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    /* El degradado de abajo solo protege el tercio inferior. Estas fotos son
+       de producción —cielo claro, asfalto gris medio, vegetación iluminada— y
+       el h1 y la bajada caían sobre valores altos.
+
+       Se baja el brillo de la FOTO en vez de subir el degradado a negro pleno:
+       así el vehículo conserva su color, que es lo que el hero tiene que
+       mostrar. Es la misma técnica y el mismo motivo que los tiles del Home
+       (`AccessTiles`, brightness 0.82), acá más marcado porque encima va texto
+       grande y no solo un label.
+
+       0.6 elegido comparando 1.0 / 0.75 / 0.6 / 0.5 renderizados con la foto
+       real y el texto encima: 0.75 se queda corto y 0.5 ya apaga el auto. */
+    filter: brightness(0.6);
+  }
+
+  /* §5.2 — mismo degradado que HomeHero. Trabaja JUNTO con el `brightness` de
+     la foto, no en su lugar: el filtro baja todo por parejo y este degradado
+     agrega peso solo donde va el texto. */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent 60%);
+    pointer-events: none;
+  }
+
+  .hero__content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    /* 48px y no 64px: con el hero más bajo, el padding del Home dejaba al h1
+       flotando lejos del borde y comía el alto que se acaba de recuperar. */
+    padding-block: var(--space-12);
+  }
+
+  .hero__lede {
+    margin-top: var(--space-6);
+  }
+
+  @media (max-width: 899px) {
+    .hero {
+      min-height: 320px;
+      min-height: clamp(320px, 42svh, 420px);
+    }
+
+    .hero__content {
+      padding-block: var(--space-8);
+    }
+  }
+</style>

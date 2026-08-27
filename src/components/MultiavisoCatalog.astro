@@ -1,0 +1,207 @@
+---
+import '../styles/multiaviso.css';
+
+/**
+ * Contenedor del catálogo. El markup de adentro lo inyecta el plugin en
+ * runtime — nosotros solo ponemos la caja y la pisamos con CSS.
+ *
+ * El <form> replica la estructura del staging, donde el contenedor vive dentro
+ * de uno. Probablemente sea herencia de la demo (huele a ASP.NET WebForms),
+ * pero el formulario "Contactar ahora" del detalle podría depender de tener un
+ * <form> ancestro. Sacarlo después es trivial; descubrir que hacía falta, no.
+ *
+ * `data-surface` elige el tema de los overrides.
+ *
+ * El default es **dark**, que es la intención de diseño.
+ *
+ * Estuvo en "light" una vuelta, y vale saber por qué volvió: el primer intento
+ * en oscuro se veía roto —cuerpo de las tarjetas en blanco, labels de filtro y
+ * valores de ficha invisibles— y se leyó como "el plugin no se puede oscurecer"
+ * (el fallback de §6.3). **El diagnóstico estaba mal.** No era el color: era
+ * ESPECIFICIDAD. La hoja del plugin se inyecta en runtime, después de la
+ * nuestra, y con especificidad igual gana ella. Los overrides existían y
+ * perdían en silencio.
+ *
+ * Con los selectores prefijados por `.catalog` (una clase más de especificidad,
+ * ver multiaviso.css) el empate se rompe y el oscuro funciona.
+ *
+ * Si alguna vez hay que volver atrás, sigue siendo un atributo — para eso están
+ * los tokens `--ma-*`.
+ *
+ * El slot "header" existe para el carrusel de destacados del Home, que necesita
+ * un título propio dentro del mismo contenedor. Las páginas de listado no lo
+ * usan: ahí el marco lo pone el <PageHero> de §5.2.
+ *
+ * Un solo contenedor por página: `containerSelector` del plugin es un selector
+ * único, así que no puede haber dos instancias en el mismo documento.
+ */
+interface Props {
+  surface?: 'dark' | 'light';
+  /**
+   * En qué contexto se usa el catálogo. Gobierna dos cosas que hasta acá eran
+   * props separadas y siempre co-variaban:
+   *
+   * - **El ritmo vertical.** En `'list'` no lleva `padding-block`: el catálogo
+   *   es el contenido de la página, arranca pegado al <PageHero>. En
+   *   `'carousel'` sí, porque ahí es una banda entre bandas (§4).
+   * - **El alto reservado mientras carga.** Ver `--ma-reserve` en
+   *   multiaviso.css.
+   *
+   * El default es `'list'`: son tres páginas contra un solo carrusel, así que
+   * el caso especial es el que se declara.
+   *
+   * Ojo: este `view` NO es el `viewMode` que se le pasa a `MultiavisoScripts`.
+   * Tienen que coincidir, pero son componentes distintos —uno va en <head> y el
+   * otro en el <body>— y el plugin no expone su modo al DOM.
+   */
+  view?: 'list' | 'carousel';
+}
+
+const { surface = 'dark', view = 'list' } = Astro.props;
+---
+
+<div class="catalog" data-surface={surface} data-view={view}>
+  <div class="catalog__inner">
+    <slot name="header" />
+    <form>
+      <div id="MultiavisoContainer"></div>
+    </form>
+  </div>
+
+  {/*
+    Chrome de la hoja de filtros en mobile. Es markup NUESTRO y vive FUERA de
+    `#MultiavisoContainer` a propósito: el plugin es dueño de todo lo que hay
+    adentro y la regla del proyecto es no tocárselo con JS. Acá no se inyecta
+    nada en su árbol — se pone un backdrop y dos barras al lado, y el CSS
+    (multiaviso.css §7) reposiciona su `#FilterContent` entre las dos.
+
+    Está en TODAS las páginas que usan el catálogo, incluida la home. Ahí no
+    molesta: el carrusel no renderiza `#FilterContent`, así que el script nunca
+    llega a poner la clase que lo hace visible.
+  */}
+  <div class="ma-sheet" data-ma-sheet>
+    <button class="ma-sheet__backdrop" type="button" data-ma-close aria-label="Cerrar filtros"
+    ></button>
+
+    {/*
+      Superficie opaca de la hoja. Existe porque el fondo NO puede vivir en
+      `#FilterContent`: ese es el contenedor que scrollea, y en el rebote de
+      iOS su background se pinta junto con el contenido, así que al pasarse del
+      final se veía el listado de atrás. Esta caja es fija, no scrollea, y tapa
+      exactamente el área de la hoja.
+    */}
+    <div class="ma-sheet__surface" aria-hidden="true"></div>
+
+    <div class="ma-sheet__head">
+      <span class="ma-sheet__title">Filtros y orden</span>
+      <button class="ma-sheet__close" type="button" data-ma-close aria-label="Cerrar filtros">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="ma-sheet__foot">
+      <button class="ma-sheet__apply" type="button" data-ma-close>Ver resultados</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* Sincroniza nuestro chrome con el acordeón del plugin.
+   *
+   * El plugin sigue siendo el dueño del estado: `#FiltersTitle` es su trigger y
+   * abre `#FilterContent` escribiendo `display: block` INLINE. Acá NO se
+   * escribe en su DOM — se OBSERVA para saber si quedó abierto, y para cerrar
+   * se despacha un click en su propio trigger. Una sola fuente de verdad; si
+   * mantuviéramos un flag propio, el primer tap después de un cierre "nuestro"
+   * abriría en falso.
+   */
+  const MOBILE = '(max-width: 699px)';
+
+  const sheet = document.querySelector<HTMLElement>('[data-ma-sheet]');
+  const container = document.getElementById('MultiavisoContainer');
+
+  if (sheet && container) {
+    const mq = window.matchMedia(MOBILE);
+    const closeBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__close');
+    let open = false;
+
+    /* El estado se lee de `getComputedStyle`, NO de `style.display` ni del
+       string del atributo. El plugin usa dos mecanismos a la vez —clase
+       `.collapsed` en el título y `display` inline en el panel— y así da igual
+       cuál mueva: lo que importa es si el panel se ve. */
+    const isOpen = (): boolean => {
+      if (!mq.matches) return false;
+      const panel = document.getElementById('FilterContent');
+      return panel !== null && getComputedStyle(panel).display !== 'none';
+    };
+
+    const apply = (): void => {
+      const next = isOpen();
+      if (next === open) return;
+      open = next;
+
+      document.documentElement.classList.toggle('ma-filters-open', open);
+      /* Mismo lock de scroll que el drawer del Header. No se usa `inert` como
+         allá: ahí los hermanos del drawer son hijos de <body>, acá el panel
+         está enterrado en el árbol del plugin y marcar hermanos inertaría el
+         propio contenido de la hoja. */
+      document.body.style.overflow = open ? 'hidden' : '';
+
+      if (open) closeBtn?.focus();
+    };
+
+    /* El plugin anima el colapso con jQuery, o sea decenas de mutaciones de
+       `style` por segundo mientras dura. Un frame de coalescing alcanza. */
+    let queued = false;
+    const schedule = (): void => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        apply();
+      });
+    };
+
+    /* Un solo observer sobre el contenedor cubre las dos cosas que importan:
+       la inyección del markup en runtime (`childList`) y los toggles
+       posteriores (`attributes`). `#FilterContent` no existe todavía cuando
+       este script corre. */
+    new MutationObserver(schedule).observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    });
+
+    mq.addEventListener('change', schedule);
+
+    const close = (): void => {
+      document.getElementById('FiltersTitle')?.click();
+    };
+
+    sheet.querySelectorAll<HTMLElement>('[data-ma-close]').forEach((el) => {
+      el.addEventListener('click', close);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && open) close();
+    });
+
+    /* Por si el plugin ya terminó de renderizar antes de que este script corra. */
+    schedule();
+  }
+</script>

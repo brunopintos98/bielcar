@@ -1,0 +1,42 @@
+---
+/**
+ * Hero de página interna — §5.2.
+ *
+ * Banda oscura, sin imagen. Encima de cada página con Multiaviso va exactamente
+ * este patrón: le da un marco propio a un contenido que no controlamos.
+ *
+ * Ojo: el detalle de vehículo se renderiza in-place sobre la misma URL, así que
+ * este hero también se va a ver arriba del detalle. En premiumcars pasa lo
+ * mismo y funciona (§6.4).
+ */
+interface Props {
+  title: string;
+  lede?: string;
+}
+
+const { title, lede } = Astro.props;
+---
+
+<section class="page-hero">
+  <div class="container">
+    <h1 class="h1">{title}</h1>
+    {lede && <p class="lede page-hero__lede">{lede}</p>}
+  </div>
+</section>
+
+<style>
+  .page-hero {
+    background: var(--surface-dark);
+    padding: 88px 0 var(--space-16);
+  }
+
+  .page-hero__lede {
+    margin-top: var(--space-6);
+  }
+
+  @media (max-width: 899px) {
+    .page-hero {
+      padding: var(--space-12) 0 var(--space-8);
+    }
+  }
+</style>

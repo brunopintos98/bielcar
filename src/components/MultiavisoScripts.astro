@@ -1,0 +1,156 @@
+---
+import { multiaviso } from '../data/site';
+
+/**
+ * Scripts del plugin de Multiaviso. Va en el slot "head" del layout:
+ *
+ *   <MultiavisoScripts slot="head" viewMode="LIST" condition="USED" />
+ *
+ * ─── El orden NO es un error ────────────────────────────────────────────────
+ * plugin.js carga ANTES que jQuery. Verificado contra bielcar.vercel.app, que
+ * es donde el plugin realmente funciona. plugin.js solo define el global
+ * `Multiaviso`; el `initialize` corre recién en `jQuery(document).ready()`,
+ * cuando jQuery ya llegó. Si "arreglás" el orden, rompés el que anda.
+ *
+ * ─── is:inline es obligatorio ───────────────────────────────────────────────
+ * Sin él Astro procesa y bundlea los tres scripts, y se pierden el orden de
+ * carga y el scope global que el plugin necesita.
+ *
+ * ─── No vas a ver vehículos en local ────────────────────────────────────────
+ * El whitelist de Multiaviso es por dominio y solo bielcar.vercel.app está
+ * habilitado. En localhost y en los preview deploys de Vercel el contenedor
+ * queda vacío y la consola tira 404 en plugin/v3/list. ES ESPERADO.
+ * No lo debuguees. Verificá con `npm run deploy`.
+ */
+interface Props {
+  viewMode: 'LIST' | 'CAROUSEL';
+  condition: 'NEW' | 'USED' | 'ALL';
+  /**
+   * Solo CAROUSEL.
+   *
+   * 'FEATURED' es la config de producción (§6.4) y es la que corre hoy: el
+   * bloque se titula "Destacados" y muestra los que Sebastián marcó.
+   *
+   * 'ALL' existe para el caso en que no haya ninguno marcado. **Si se vuelve a
+   * 'ALL', hay que devolver el <Placeholder> a FeaturedCarousel.astro**: el
+   * título dice "Destacados" y con 'ALL' muestra stock cualquiera, o sea que
+   * afirma algo falso. Las dos cosas van juntas.
+   *
+   * El comentario que explicaba esto vivía DENTRO del script emitido, o sea
+   * que se publicaba en el HTML de todas las páginas y encima quedó mintiendo
+   * cuando cambió el valor. Ahora vive acá.
+   */
+  listingType?: 'ALL' | 'FEATURED';
+  /**
+   * Solo LIST. Valores admitidos por el plugin: 12, 24, 36, 48.
+   *
+   * Va en 12 y NO en 24 porque el listado muestra 2 columnas: 24 items son 12
+   * filas de scroll, y con la foto a 16:10 sobre cards de ~630px cada fila mide
+   * casi media pantalla. Menos por página y más páginas.
+   *
+   * Si algún día se vuelve a 3 o 4 columnas, este número hay que revisarlo con
+   * el mismo criterio — lo que importa es cuántas FILAS quedan, no cuántos
+   * items.
+   */
+  pageSize?: 12 | 24 | 36 | 48;
+  /** Solo CAROUSEL. */
+  maxItems?: number;
+}
+
+const {
+  viewMode,
+  condition,
+  listingType = 'ALL',
+  pageSize = 12,
+  maxItems = 12,
+} = Astro.props;
+
+const base = `    client: '${multiaviso.client}',
+    containerSelector: '${multiaviso.containerSelector}',
+    viewMode: '${viewMode}',
+    condition: '${condition}'`;
+
+const listBlock = `,
+    list: {
+      pageSize: ${pageSize},
+      filters: { department: false, location: false }
+    }`;
+
+/**
+ * ─── `breakpoints`: por qué se pisan los del plugin ────────────────────────
+ * El carrusel es un Swiper y el plugin lo arma así (leído de plugin.js):
+ *
+ *   var o = jQuery(window).width(), s = o > 0 && o <= 767;
+ *   for (f in n.breakpoints) h[f] = { slidesPerView: n.breakpoints[f] };
+ *   u = { spaceBetween: 15, autoHeight: true, breakpoints: h,
+ *         slidesPerView: 1, centeredSlides: s }
+ *
+ * O sea que abajo de 767px fuerza `centeredSlides: true` (y cambia las flechas
+ * por bullets).
+ *
+ * ⚠️  LAS KEYS SON `max-width`, NO `min-width`.
+ *
+ * Esto es lo único importante de este bloque y estuvo mal leído dos sesiones.
+ * El Swiper que bundlea el plugin es de la era 4 (usa `.swiper-container`, que
+ * en Swiper 6 pasó a `.swiper`), y su resolver —leído de
+ * plugin-sripts.min.js— es:
+ *
+ *   bf = function (n) {
+ *     ...t.sort(function (a, b) { return parseInt(a) - parseInt(b) });
+ *     for (u = 0; u < t.length; u += 1) {
+ *       f = t[u];
+ *       f >= i.innerWidth && !r && (r = f);   // ← la key MÁS CHICA que sea >= innerWidth
+ *     }
+ *     return r || "max"
+ *   }
+ *
+ * O sea que la tabla se lee como umbrales de máximo:
+ *
+ *   <=400   1.11     teléfonos angostos
+ *   <=767   1.11     el resto de los teléfonos — es el mismo corte que usa el
+ *                    plugin para pasar a bullets + centeredSlides
+ *   <=940   3        tablet / desktop angosto
+ *   <=1500  4
+ *   <=4000  5
+ *
+ * **El bug que esto arregla:** la tabla anterior era
+ * `{ 400: 1, 700: 2, 940: 3, ... }` escrita creyendo que eran min-width. Bajo
+ * max-width, un teléfono de 412 o 430px CSS —o sea casi cualquiera hoy— no cae
+ * en la key 400 sino en la 700, y salía con `slidesPerView: 2`: la tarjeta
+ * ocupaba ~44% del ancho y la siguiente asomaba cortada. La corrección de
+ * `1.3 → 1` de una sesión anterior apuntaba a la key 400, que solo aplica a
+ * teléfonos de 400px o menos, así que en la práctica no cambió nada.
+ *
+ * `1.11` y no `1`: da ~90% del ancho (1 / 1.11), o sea la tarjeta casi entera
+ * con un sliver de la siguiente asomando a cada lado. Ese sliver es lo que
+ * comunica que el carrusel se desliza; a ancho completo exacto no hay señal de
+ * que haya más.
+ *
+ * Se conservan 940 / 1500 / 4000 tal cual: desktop funciona y no es lo que se
+ * está arreglando. El único bucket que cambia de valor es el de teléfonos, y
+ * el 700 se corre a 767 para alinearlo con el corte que el plugin ya usa.
+ *
+ * ⚠️  Es la tabla del plugin adaptada. Si Madfes cambia sus defaults, o
+ * actualiza Swiper a 5+ (donde las keys pasaron a ser min-width), esto no se
+ * entera y hay que releer el resolver. Está acá y no en site.ts justamente
+ * para que se lea al lado de la explicación.
+ */
+const carouselBreakpoints = '{ 400: 1.11, 767: 1.11, 940: 3, 1500: 4, 4000: 5 }';
+
+const carouselBlock = `,
+    listingType: '${listingType}',
+    carousel: {
+      maxItems: ${maxItems},
+      breakpoints: ${carouselBreakpoints}
+    }`;
+
+const initScript = `jQuery(document).ready(function () {
+  Multiaviso.initialize({
+${base}${viewMode === 'CAROUSEL' ? carouselBlock : listBlock}
+  });
+});`;
+---
+
+<script is:inline src={multiaviso.pluginSrc}></script>
+<script is:inline src={multiaviso.jquerySrc}></script>
+<script is:inline set:html={initScript} />

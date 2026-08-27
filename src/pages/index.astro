@@ -1,0 +1,62 @@
+---
+import Base from '../layouts/Base.astro';
+import MultiavisoScripts from '../components/MultiavisoScripts.astro';
+import HomeHero from '../components/HomeHero.astro';
+import BrandStrip from '../components/BrandStrip.astro';
+import AccessTiles from '../components/AccessTiles.astro';
+import FeaturedCarousel from '../components/FeaturedCarousel.astro';
+import ServicesBlock from '../components/ServicesBlock.astro';
+import ServiceCta from '../components/ServiceCta.astro';
+import { site } from '../data/site';
+
+/**
+ * Home — composición de §7:
+ *
+ *   Hero full-bleed + h1
+ *   Franja de marcas de servicio oficial
+ *   3 accesos (0km / Usados / Todos)
+ *   Carrusel de destacados (Multiaviso, CAROUSEL)
+ *   Bloque de servicios con íconos (banda clara) — incluye permuta
+ *   CTA de service por WhatsApp
+ *   Footer
+ *
+ * ─── La franja de marcas va acá y NO en el footer ───────────────────────────
+ * §7 la lista en el cuerpo del Home y §5.8 la lista como parte 1 del footer:
+ * cumplir las dos al pie de la letra da la misma franja dos veces en la misma
+ * página. Se resolvió a favor de §7 —que es donde la pone premiumcars, alto en
+ * la home— y Footer.astro la suprime cuando la ruta es '/'. En el resto de las
+ * rutas el footer sigue siendo el único lugar donde aparece.
+ *
+ * ─── La banda de permuta NO va en el Home ──────────────────────────────────
+ * §5.10, explícito. Acá la permuta entra como ítem de ServicesBlock, y ese
+ * ítem es el que lleva el texto largo que escribió Sebastián.
+ *
+ * ─── listingType='ALL' ─────────────────────────────────────────────────────
+ * §6.4 fija 'FEATURED' como config de producción. Corre en 'ALL' y el eyebrow
+ * del carrusel dice "Nuestro stock" en vez de "Destacados", para que el bloque
+ * no afirme algo que no es. Ver la nota larga en FeaturedCarousel.astro,
+ * incluido el fallback automático que se probó y no funcionó.
+ *
+ * Volver a 'FEATURED' son DOS cambios: acá y el eyebrow del componente.
+ */
+---
+
+<Base
+  title={site.name}
+  description="Automotora en Montevideo. Vehículos 0km y usados, servicio oficial y permuta. La Paz 2028."
+>
+  <MultiavisoScripts
+    slot="head"
+    viewMode="CAROUSEL"
+    condition="ALL"
+    listingType="ALL"
+    maxItems={12}
+  />
+
+  <HomeHero />
+  <BrandStrip />
+  <AccessTiles />
+  <FeaturedCarousel />
+  <ServicesBlock />
+  <ServiceCta />
+</Base>

@@ -1,0 +1,52 @@
+---
+import Base from '../layouts/Base.astro';
+import MultiavisoScripts from '../components/MultiavisoScripts.astro';
+import MultiavisoCatalog from '../components/MultiavisoCatalog.astro';
+import PageHero from '../components/PageHero.astro';
+import PhotoHero from '../components/PhotoHero.astro';
+import { PHOTOS } from '../data/site';
+import PermutaBand from '../components/PermutaBand.astro';
+import CatalogBrandSync from '../components/CatalogBrandSync.astro';
+
+/**
+ * El detalle de cada vehículo se renderiza in-place sobre ESTA misma URL con
+ * ?ma_carid=. No hay página de detalle y no hay que crearla: /usados y el
+ * detalle de un auto son el mismo archivo (§6.4).
+ *
+ * Consecuencia: el hero de abajo también se ve arriba del detalle. En
+ * premiumcars pasa lo mismo y funciona.
+ */
+
+/**
+ * La misma foto que el tile de esta sección en el Home, así el acceso y la
+ * página que abre se corresponden.
+ *
+ * Puede ser `null` —las fotos las manda Sebastián— y por eso hay fallback a
+ * <PageHero>, el hero plano de §5.2, en vez de un `!` que afirme que existe.
+ * Además de no mentirle al typechecker, el fallback es literalmente lo que el
+ * documento pide para esta página: si no hay foto, no hay nada que perder.
+ */
+const heroPhoto = PHOTOS.tileUsados;
+---
+
+<Base
+  title="Vehículos usados"
+  description="Autos y camionetas usados seleccionados en Bielcar Automóviles, Montevideo. Tomamos su usado en parte de pago."
+>
+  <MultiavisoScripts slot="head" viewMode="LIST" condition="USED" pageSize={12} />
+
+  {/* Foto en vez del hero plano de §5.2 — desviación pedida. Ver el ⚠️ de
+      PhotoHero.astro: el detalle de vehículo comparte esta URL, así que la
+      foto también queda arriba de la ficha de un auto que no es ese. */}
+  {
+    heroPhoto ? (
+      <PhotoHero image={heroPhoto} title="Vehículos usados" lede="Usados seleccionados, revisados y listos para entregar." />
+    ) : (
+      <PageHero title="Vehículos usados" lede="Usados seleccionados, revisados y listos para entregar." />
+    )
+  }
+
+  <MultiavisoCatalog />
+  <PermutaBand />
+  <CatalogBrandSync />
+</Base>
