@@ -1,6 +1,6 @@
 # Bielcar Automóviles
 
-Sitio de [Bielcar Automóviles](https://bielcar.vercel.app), automotora en Montevideo.
+Sitio web de [Bielcar Automóviles](https://bielcar.vercel.app), automotora en Montevideo.
 Rebuild completo de `bielcar.com.uy`.
 
 Astro 7 con output estático, CSS plano con custom properties, sin frameworks de UI,
