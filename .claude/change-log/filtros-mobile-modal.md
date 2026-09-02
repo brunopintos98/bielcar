@@ -413,3 +413,34 @@ son las dos bandas de CTA del sitio y tenían que comportarse igual.
 Va por `text-align: center` sobre `.permuta .container` y NO por `align-items`:
 `.container` es un bloque, no un flex. El `<Button>` es `inline-flex`, así que
 se centra como texto.
+
+## Session 11 — 2026-09-02
+
+Riel de categorías estilo Mercado Libre + "Limpiar filtros" + reabrir la hoja
+tras aplicar un filtro. El usuario pidió acumular sin recargar; se investigó en
+producción y se descartó: la taxonomía es progresiva (Marca → Modelo) y los
+contadores se recalculan por recarga. La alternativa aprobada: cada filtro sigue
+siendo un link que recarga, pero la hoja se reabre sola en la misma categoría.
+
+### Archivos
+
+| Archivo | Cambio |
+|---|---|
+| `src/components/MultiavisoCatalog.astro` | `.ma-sheet__rail` (nav vacío, botones generados en runtime); pie con "Limpiar filtros" si hay `ma_*`; `sessionStorage` + `html[data-ma-cat]` para riel y reapertura. |
+| `src/styles/multiaviso.css` | `--ma-rail-w: 116px`; `#FilterContent` con `left: var(--ma-rail-w)`; show/hide por `:nth-child(N)`; estilos del riel y del link limpiar. **review_required** |
+| `documentation/DESIGN.md` | §8: taxonomía progresiva, reapertura, riel sí (CSS-only), pie con Limpiar + Ver resultados. |
+
+### Verificación previa (Session 10 tap targets, producción)
+
+Filas `.filter-block-item` 48–49px; "Más opciones" revela filas de 49px con
+`display: block` sin inline style — la trampa jQuery no se materializó.
+
+### Verificación post-implementación
+
+- `npm run check` — 0 errores
+- `npm run build` — OK
+- Catálogo en producción: requiere `npm run deploy` (plugin no renderiza en local)
+
+### Approval token
+
+Pendiente revisión humana del diff en `src/styles/multiaviso.css` (review_required).

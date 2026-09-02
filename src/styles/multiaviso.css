@@ -711,6 +711,7 @@
        un solo número, dos consumidores. */
     --ma-sheet-head: 56px;
     --ma-sheet-foot: calc(72px + env(safe-area-inset-bottom, 0px));
+    --ma-rail-w: 116px;
 
     /* La hoja no es full-screen: ocupa el 80% de abajo y deja ver el listado
        atenuado arriba, para que se lea como una capa sobre los resultados y no
@@ -759,7 +760,7 @@
     top: auto;
     right: 0;
     bottom: var(--ma-sheet-foot);
-    left: 0;
+    left: var(--ma-rail-w);
     /* Alto explícito en vez de `top` + `bottom`, por dos razones. Una: evita
        tener que restar de `100svh`. Dos, la importante: jQuery escribe `height`
        INLINE mientras anima, y con la caja anclada por `bottom` eso la hace
@@ -787,6 +788,39 @@
     padding-bottom: var(--space-8);
     /* el `td#Filters` es `text-align: center` en la hoja del plugin */
     text-align: left;
+  }
+
+  /* ─── Riel de categorías (§8) ────────────────────────────────────────────
+     Los hijos de `#FilterContent` son TODOS `.filter-block` hermanos directos
+     (verificado en producción). El bloque 1 es `#Counts`; los demás se ocultan
+     y solo se muestra el activo vía `html[data-ma-cat]`. Esto NO pelea con
+     "Más opciones": `.hidden` cae sobre `.filter-block-item`, no sobre el
+     bloque entero. */
+  .catalog #MultiavisoWrapper #FilterContent > .filter-block {
+    display: none;
+  }
+
+  .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(1) {
+    display: block;
+  }
+
+  html[data-ma-cat='2'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(2),
+  html[data-ma-cat='3'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(3),
+  html[data-ma-cat='4'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(4),
+  html[data-ma-cat='5'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(5),
+  html[data-ma-cat='6'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(6),
+  html[data-ma-cat='7'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(7),
+  html[data-ma-cat='8'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(8),
+  html[data-ma-cat='9'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(9),
+  html[data-ma-cat='10'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(10),
+  html[data-ma-cat='11'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(11),
+  html[data-ma-cat='12'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(12) {
+    display: flex;
+  }
+
+  /* El riel ya muestra la categoría activa; el label del bloque sobra. */
+  .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(n + 2) .filter-block-label {
+    display: none;
   }
 
   /* ─── Tap targets de la hoja ─────────────────────────────────────────────
@@ -902,7 +936,8 @@
      miden 56/72px — se quedarían a mitad de pantalla. */
   .ma-sheet__surface,
   .ma-sheet__head,
-  .ma-sheet__foot {
+  .ma-sheet__foot,
+  .ma-sheet__rail {
     transform: translateY(var(--ma-sheet-h));
     pointer-events: none;
     transition: transform var(--dur-drawer) var(--ease);
@@ -910,7 +945,8 @@
 
   .ma-filters-open .ma-sheet__surface,
   .ma-filters-open .ma-sheet__head,
-  .ma-filters-open .ma-sheet__foot {
+  .ma-filters-open .ma-sheet__foot,
+  .ma-filters-open .ma-sheet__rail {
     transform: translateY(0);
     pointer-events: auto;
   }
@@ -958,6 +994,48 @@
     /* el alto ya incluye el safe area; acá se lo saca del área de contenido */
     padding-bottom: env(safe-area-inset-bottom, 0px);
     border-top: 1px solid var(--ma-rule);
+    gap: var(--space-4);
+    justify-content: space-between;
+  }
+
+  .ma-sheet__rail {
+    position: fixed;
+    bottom: var(--ma-sheet-foot);
+    left: 0;
+    width: var(--ma-rail-w);
+    height: calc(var(--ma-sheet-h) - var(--ma-sheet-head) - var(--ma-sheet-foot));
+    z-index: var(--z-filters);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-right: 1px solid var(--ma-rule);
+    background: var(--ma-bg);
+  }
+
+  .ma-sheet__rail-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 48px;
+    padding: var(--space-3) var(--space-4);
+    border: 0;
+    background: none;
+    color: var(--ma-text-muted);
+    font-family: var(--font-body);
+    font-size: var(--fs-small);
+    line-height: var(--lh-small);
+    text-align: left;
+    cursor: pointer;
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .ma-sheet__rail-item[aria-pressed='true'] {
+    background: var(--ma-bg-raised);
+    box-shadow: inset 2px 0 0 var(--brand-bright);
+    color: var(--ma-text);
+  }
+
+  .ma-sheet__rail-item:active {
+    transform: scale(0.97);
   }
 
   .ma-sheet__title {
@@ -987,11 +1065,30 @@
     transform: scale(0.97);
   }
 
+  .ma-sheet__clear {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    color: var(--brand-bright);
+    font-family: var(--font-body);
+    font-size: var(--fs-button);
+    line-height: var(--lh-button);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .ma-sheet__clear:active {
+    transform: scale(0.97);
+  }
+
   .ma-sheet__apply {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
+    flex: 1;
     padding: var(--space-4) var(--space-6);
     border: 1px solid var(--brand);
     border-radius: var(--radius-sm);
@@ -1012,7 +1109,9 @@
 
   @media (prefers-reduced-motion: reduce) {
     .ma-sheet__close:active,
-    .ma-sheet__apply:active {
+    .ma-sheet__clear:active,
+    .ma-sheet__apply:active,
+    .ma-sheet__rail-item:active {
       transform: none;
     }
   }

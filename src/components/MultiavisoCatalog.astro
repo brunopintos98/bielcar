@@ -58,6 +58,10 @@ interface Props {
 }
 
 const { surface = 'dark', view = 'list' } = Astro.props;
+
+/** Hay filtros aplicados si la URL trae algún `ma_*` (§6.4). */
+const hasFilters = [...Astro.url.searchParams.keys()].some((key) => key.startsWith('ma_'));
+const clearHref = Astro.url.pathname;
 ---
 
 <div class="catalog" data-surface={surface} data-view={view}>
@@ -92,6 +96,8 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     */}
     <div class="ma-sheet__surface" aria-hidden="true"></div>
 
+    <nav class="ma-sheet__rail" aria-label="Categorías de filtro"></nav>
+
     <div class="ma-sheet__head">
       <span class="ma-sheet__title">Filtros y orden</span>
       <button class="ma-sheet__close" type="button" data-ma-close aria-label="Cerrar filtros">
@@ -114,7 +120,14 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     </div>
 
     <div class="ma-sheet__foot">
-      <button class="ma-sheet__apply" type="button" data-ma-close>Ver resultados</button>
+      {hasFilters && (
+        <a class="ma-sheet__clear" href={clearHref}>
+          Limpiar filtros
+        </a>
+      )}
+      <button class="ma-sheet__apply" type="button" data-ma-close>
+        Ver resultados
+      </button>
     </div>
   </div>
 </div>
@@ -130,6 +143,7 @@ const { surface = 'dark', view = 'list' } = Astro.props;
    * abriría en falso.
    */
   const MOBILE = '(max-width: 699px)';
+  const STORAGE_KEY = 'ma-filter-reopen-cat';
 
   const sheet = document.querySelector<HTMLElement>('[data-ma-sheet]');
   const container = document.getElementById('MultiavisoContainer');
@@ -137,7 +151,12 @@ const { surface = 'dark', view = 'list' } = Astro.props;
   if (sheet && container) {
     const mq = window.matchMedia(MOBILE);
     const closeBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__close');
+    const rail = sheet.querySelector<HTMLElement>('.ma-sheet__rail');
     let open = false;
+    let activeCat: number | null = null;
+    let reopenLabel: string | null = sessionStorage.getItem(STORAGE_KEY);
+    if (reopenLabel) sessionStorage.removeItem(STORAGE_KEY);
+    let pendingReopen = reopenLabel !== null;
     /* Cierre optimista: el observer lee `display !== none` y jQuery deja
        `display: block` durante todo el slideUp. Si esperáramos a `isOpen() ===
        false`, el chrome se iría DESPUÉS de que el panel ya colapsó. Durante
@@ -152,6 +171,76 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       if (!mq.matches) return false;
       const panel = document.getElementById('FilterContent');
       return panel !== null && getComputedStyle(panel).display !== 'none';
+    };
+
+    const getBlocks = (): HTMLElement[] => {
+      const panel = document.getElementById('FilterContent');
+      if (!panel) return [];
+      return [...panel.querySelectorAll<HTMLElement>(':scope > .filter-block')];
+    };
+
+    const selectCategory = (nth: number): void => {
+      activeCat = nth;
+      document.documentElement.dataset.maCat = String(nth);
+      rail?.querySelectorAll<HTMLButtonElement>('.ma-sheet__rail-item').forEach((btn) => {
+        btn.setAttribute('aria-pressed', btn.dataset.maCat === String(nth) ? 'true' : 'false');
+      });
+    };
+
+    const buildRail = (): void => {
+      if (!mq.matches || !rail) {
+        rail && (rail.innerHTML = '');
+        delete document.documentElement.dataset.maCat;
+        activeCat = null;
+        return;
+      }
+
+      const entries = getBlocks()
+        .map((block, index) => {
+          const nth = index + 1;
+          const label = block.querySelector('.filter-block-label')?.textContent.trim();
+          if (!label) return null;
+          return { nth, label };
+        })
+        .filter((entry): entry is { nth: number; label: string } => entry !== null);
+
+      if (entries.length === 0) {
+        rail.innerHTML = '';
+        return;
+      }
+
+      const signature = entries.map((entry) => `${entry.nth}:${entry.label}`).join('|');
+      if (rail.dataset.sig !== signature) {
+        rail.dataset.sig = signature;
+        rail.innerHTML = '';
+        for (const { nth, label } of entries) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'ma-sheet__rail-item';
+          btn.dataset.maCat = String(nth);
+          btn.textContent = label;
+          btn.addEventListener('click', () => selectCategory(nth));
+          rail.appendChild(btn);
+        }
+      }
+
+      let nthToSelect = activeCat;
+      if (reopenLabel) {
+        const match = entries.find((entry) => entry.label === reopenLabel);
+        nthToSelect = match?.nth ?? entries[0]?.nth ?? null;
+        reopenLabel = null;
+      } else if (nthToSelect === null || !entries.some((entry) => entry.nth === nthToSelect)) {
+        nthToSelect = entries[0]?.nth ?? null;
+      }
+
+      if (nthToSelect !== null) selectCategory(nthToSelect);
+    };
+
+    const tryReopen = (): void => {
+      if (!pendingReopen || !mq.matches || open) return;
+      if (getBlocks().length === 0) return;
+      pendingReopen = false;
+      document.getElementById('FiltersTitle')?.click();
     };
 
     const apply = (): void => {
@@ -171,7 +260,12 @@ const { surface = 'dark', view = 'list' } = Astro.props;
          hermanos inertaría el propio contenido de la hoja. */
       document.body.style.overflow = open ? 'hidden' : '';
 
-      if (open) closeBtn?.focus();
+      if (open) {
+        buildRail();
+        closeBtn?.focus();
+      } else {
+        delete document.documentElement.dataset.maCat;
+      }
     };
 
     /* El plugin anima el colapso con jQuery, o sea decenas de mutaciones de
@@ -182,6 +276,7 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       queued = true;
       requestAnimationFrame(() => {
         queued = false;
+        tryReopen();
         apply();
       });
     };
@@ -212,6 +307,31 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     sheet.querySelectorAll<HTMLElement>('[data-ma-close]').forEach((el) => {
       el.addEventListener('click', close);
     });
+
+    /* Antes de que el link navegue, guardamos la categoría activa para reabrir
+       la hoja en la misma sección después de la recarga (§8). */
+    container.addEventListener(
+      'click',
+      (event) => {
+        if (!mq.matches || !open) return;
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        const link = target.closest('a');
+        if (!link?.closest('#FilterContent')) return;
+        if (
+          !link.classList.contains('filter-block-item') &&
+          !link.closest('#SortPopupInner')
+        ) {
+          return;
+        }
+        const active = rail?.querySelector<HTMLButtonElement>(
+          '.ma-sheet__rail-item[aria-pressed="true"]',
+        );
+        const label = active?.textContent?.trim();
+        if (label) sessionStorage.setItem(STORAGE_KEY, label);
+      },
+      true,
+    );
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && open) close();
