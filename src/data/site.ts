@@ -275,6 +275,18 @@ export function list(xs: readonly string[]): string {
  * `oficial` mantiene la interpolación de SERVICE_BRANDS en su `blurb`, igual
  * que `venta` la mantiene con SALES_BRANDS: ninguna marca va hardcodeada acá,
  * las dos siguen resolviéndose contra las listas confirmadas.
+ *
+ * ─── `venta` separa 0km de usados a propósito ──────────────────────────────
+ * Versión anterior: "0km y usados seleccionados. Somos punto de venta de
+ * {SALES_BRANDS}." — cierto para el 0km, pero leído de corrido da a entender
+ * que los USADOS también se limitan a esas 7 marcas, y Bielcar vende usados de
+ * cualquier marca al comprarlos/recibirlos en permuta. "Somos punto de venta
+ * de X" sigue intacto porque es un hecho real de concesionaria oficial de
+ * 0km — no se le pega un "y más" al lado, que lo volvería falso en la
+ * dirección contraria. En cambio se separa: 0km de las marcas oficiales, y
+ * usados MULTIMARCA aparte. El adjetivo es el mismo que ya usa
+ * `ABOUT_PARAGRAPHS` ("vehículo 0km o usado multimarca") y que la mecánica
+ * general usa para su propio taller — no es vocabulario nuevo.
  */
 export const SERVICES = [
   {
@@ -282,8 +294,8 @@ export const SERVICES = [
     scope: 'comercial',
     icon: 'car-front',
     title: 'Venta',
-    line: `0km y usados seleccionados. Somos punto de venta de ${list(SALES_BRANDS)}.`,
-    blurb: `0km y usados seleccionados. Somos punto de venta de ${list(SALES_BRANDS)}.`,
+    line: `Somos punto de venta de 0km de ${list(SALES_BRANDS)}, y sumamos usados multimarca seleccionados.`,
+    blurb: `0km de ${list(SALES_BRANDS)}, y usados multimarca seleccionados.`,
   },
   {
     id: 'permuta',
