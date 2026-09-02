@@ -58,10 +58,6 @@ interface Props {
 }
 
 const { surface = 'dark', view = 'list' } = Astro.props;
-
-/** Hay filtros aplicados si la URL trae algún `ma_*` (§6.4). */
-const hasFilters = [...Astro.url.searchParams.keys()].some((key) => key.startsWith('ma_'));
-const clearHref = Astro.url.pathname;
 ---
 
 <div class="catalog" data-surface={surface} data-view={view}>
@@ -120,14 +116,8 @@ const clearHref = Astro.url.pathname;
     </div>
 
     <div class="ma-sheet__foot">
-      {hasFilters && (
-        <a class="ma-sheet__clear" href={clearHref}>
-          Limpiar filtros
-        </a>
-      )}
-      <button class="ma-sheet__apply" type="button" data-ma-close>
-        Ver resultados
-      </button>
+      <button class="ma-sheet__clear" type="button" hidden>Limpiar filtros</button>
+      <button class="ma-sheet__apply" type="button">Ver resultados</button>
     </div>
   </div>
 </div>
@@ -135,15 +125,18 @@ const clearHref = Astro.url.pathname;
 <script>
   /* Sincroniza nuestro chrome con el acordeón del plugin.
    *
-   * El plugin sigue siendo el dueño del estado: `#FiltersTitle` es su trigger y
-   * abre `#FilterContent` escribiendo `display: block` INLINE. Acá NO se
-   * escribe en su DOM — se OBSERVA para saber si quedó abierto, y para cerrar
-   * se despacha un click en su propio trigger. Una sola fuente de verdad; si
-   * mantuviéramos un flag propio, el primer tap después de un cierre "nuestro"
-   * abriría en falso.
+   * El plugin sigue siendo el dueño del estado de ABIERTO/CERRADO:
+   * `#FiltersTitle` es su trigger y abre `#FilterContent` escribiendo
+   * `display: block` INLINE. Acá NO se escribe en su DOM para abrir/cerrar —
+   * se OBSERVA, y para cerrar se despacha un click en su propio trigger.
+   *
+   * Las opciones SÍ se interceptan en captura: cada filtro es un link que
+   * recargaría la página, y §8 pide aplicar recién en "Ver resultados".
+   * preventDefault no muta markup. El único write al árbol del plugin es
+   * `data-ma-pending` (nunca `class`: el observer filtra `style`/`class`).
    */
   const MOBILE = '(max-width: 699px)';
-  const STORAGE_KEY = 'ma-filter-reopen-cat';
+  const IGNORED_PARAMS = new Set(['ma_page', 'ma_carid']);
 
   const sheet = document.querySelector<HTMLElement>('[data-ma-sheet]');
   const container = document.getElementById('MultiavisoContainer');
@@ -151,22 +144,19 @@ const clearHref = Astro.url.pathname;
   if (sheet && container) {
     const mq = window.matchMedia(MOBILE);
     const closeBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__close');
+    const applyBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__apply');
+    const clearBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__clear');
     const rail = sheet.querySelector<HTMLElement>('.ma-sheet__rail');
     let open = false;
     let activeCat: number | null = null;
-    let reopenLabel: string | null = sessionStorage.getItem(STORAGE_KEY);
-    if (reopenLabel) sessionStorage.removeItem(STORAGE_KEY);
-    let pendingReopen = reopenLabel !== null;
     /* Cierre optimista: el observer lee `display !== none` y jQuery deja
        `display: block` durante todo el slideUp. Si esperáramos a `isOpen() ===
        false`, el chrome se iría DESPUÉS de que el panel ya colapsó. Durante
        `closing` se ignora un `isOpen()` true residual. */
     let closing = false;
+    let wipeAll = false;
+    const selections = new Map<number, Map<string, string> | null>();
 
-    /* El estado se lee de `getComputedStyle`, NO de `style.display` ni del
-       string del atributo. El plugin usa dos mecanismos a la vez —clase
-       `.collapsed` en el título y `display` inline en el panel— y así da igual
-       cuál mueva: lo que importa es si el panel se ve. */
     const isOpen = (): boolean => {
       if (!mq.matches) return false;
       const panel = document.getElementById('FilterContent');
@@ -177,6 +167,133 @@ const clearHref = Astro.url.pathname;
       const panel = document.getElementById('FilterContent');
       if (!panel) return [];
       return [...panel.querySelectorAll<HTMLElement>(':scope > .filter-block')];
+    };
+
+    const readMa = (href: string): Map<string, string> => {
+      const map = new Map<string, string>();
+      for (const [key, value] of new URL(href, location.href).searchParams) {
+        if (key.startsWith('ma_') && !IGNORED_PARAMS.has(key)) map.set(key, value);
+      }
+      return map;
+    };
+
+    const mapsEqual = (a: Map<string, string>, b: Map<string, string>): boolean => {
+      if (a.size !== b.size) return false;
+      for (const [key, value] of a) if (b.get(key) !== value) return false;
+      return true;
+    };
+
+    const sliceOwned = (map: Map<string, string>, owned: Set<string>): Map<string, string> => {
+      const slice = new Map<string, string>();
+      for (const key of owned) {
+        const value = map.get(key);
+        if (value !== undefined) slice.set(key, value);
+      }
+      return slice;
+    };
+
+    const linksIn = (block: Element): HTMLAnchorElement[] => {
+      const items = [...block.querySelectorAll<HTMLAnchorElement>('a.filter-block-item')];
+      if (items.length > 0) return items;
+      return [...block.querySelectorAll<HTMLAnchorElement>('#SortPopupInner a')];
+    };
+
+    /* Keys que ESTE bloque controla. Unión de los ma_* de sus links, menos
+       los que aparecen en todos (contexto ya aplicado, p.ej. ma_brand en
+       Carrocería con Honda puesto). Si unión e intersección coinciden, el
+       bloque solo tiene esas keys (Marca = ma_brand). */
+    const ownedKeys = (block: Element): Set<string> => {
+      const maps = linksIn(block).map((link) => readMa(link.href));
+      if (maps.length === 0) return new Set();
+      const union = new Set<string>();
+      for (const map of maps) for (const key of map.keys()) union.add(key);
+      const intersection = new Set<string>();
+      for (const key of union) {
+        if (maps.every((map) => map.has(key))) intersection.add(key);
+      }
+      if (intersection.size === union.size) return union;
+      const owned = new Set<string>();
+      for (const key of union) if (!intersection.has(key)) owned.add(key);
+      return owned;
+    };
+
+    const baselineMa = (): Map<string, string> => readMa(location.href);
+
+    const compose = (): Map<string, string> => {
+      if (wipeAll) return new Map();
+      const result = new Map(baselineMa());
+      for (const [nth, override] of selections) {
+        const block = getBlocks()[nth - 1];
+        if (!block) continue;
+        const owned = ownedKeys(block);
+        for (const key of owned) result.delete(key);
+        if (!override) continue;
+        for (const [key, value] of override) {
+          if (owned.has(key)) result.set(key, value);
+        }
+      }
+      return result;
+    };
+
+    const toUrl = (map: Map<string, string>): string => {
+      const params = new URLSearchParams();
+      for (const [key, value] of map) params.set(key, value);
+      const query = params.toString();
+      return query ? `${location.pathname}?${query}` : location.pathname;
+    };
+
+    const resetPending = (): void => {
+      wipeAll = false;
+      selections.clear();
+      const panel = document.getElementById('FilterContent');
+      panel?.querySelectorAll('[data-ma-pending]').forEach((node) => {
+        node.removeAttribute('data-ma-pending');
+      });
+      rail?.querySelectorAll('[data-ma-filled]').forEach((node) => {
+        node.removeAttribute('data-ma-filled');
+      });
+      if (clearBtn) clearBtn.hidden = true;
+    };
+
+    const paintPending = (): void => {
+      const composed = compose();
+      for (const block of getBlocks()) {
+        const owned = ownedKeys(block);
+        const current = sliceOwned(composed, owned);
+        for (const link of linksIn(block)) {
+          const tapped = sliceOwned(readMa(link.href), owned);
+          link.toggleAttribute('data-ma-pending', mapsEqual(tapped, current) && current.size > 0);
+        }
+      }
+      rail?.querySelectorAll<HTMLButtonElement>('.ma-sheet__rail-item').forEach((btn) => {
+        const nth = Number(btn.dataset.maCat);
+        const block = getBlocks()[nth - 1];
+        if (!block) {
+          btn.removeAttribute('data-ma-filled');
+          return;
+        }
+        const filled = sliceOwned(composed, ownedKeys(block)).size > 0;
+        btn.toggleAttribute('data-ma-filled', filled);
+      });
+      if (clearBtn) clearBtn.hidden = wipeAll || (composed.size === 0 && baselineMa().size === 0);
+    };
+
+    const selectFilter = (link: HTMLAnchorElement): void => {
+      const block = link.closest('.filter-block');
+      if (!block) return;
+      const nth = getBlocks().indexOf(block as HTMLElement) + 1;
+      if (nth === 0) return;
+      const owned = ownedKeys(block);
+      const tapped = sliceOwned(readMa(link.href), owned);
+      const current = sliceOwned(compose(), owned);
+      wipeAll = false;
+      if (mapsEqual(tapped, current)) {
+        if (selections.has(nth)) selections.delete(nth);
+        else selections.set(nth, null);
+      } else {
+        selections.set(nth, tapped);
+      }
+      paintPending();
     };
 
     const selectCategory = (nth: number): void => {
@@ -224,23 +341,13 @@ const clearHref = Astro.url.pathname;
         }
       }
 
-      let nthToSelect = activeCat;
-      if (reopenLabel) {
-        const match = entries.find((entry) => entry.label === reopenLabel);
-        nthToSelect = match?.nth ?? entries[0]?.nth ?? null;
-        reopenLabel = null;
-      } else if (nthToSelect === null || !entries.some((entry) => entry.nth === nthToSelect)) {
-        nthToSelect = entries[0]?.nth ?? null;
-      }
+      const nthToSelect =
+        activeCat !== null && entries.some((entry) => entry.nth === activeCat)
+          ? activeCat
+          : (entries[0]?.nth ?? null);
 
       if (nthToSelect !== null) selectCategory(nthToSelect);
-    };
-
-    const tryReopen = (): void => {
-      if (!pendingReopen || !mq.matches || open) return;
-      if (getBlocks().length === 0) return;
-      pendingReopen = false;
-      document.getElementById('FiltersTitle')?.click();
+      paintPending();
     };
 
     const apply = (): void => {
@@ -264,6 +371,7 @@ const clearHref = Astro.url.pathname;
         buildRail();
         closeBtn?.focus();
       } else {
+        resetPending();
         delete document.documentElement.dataset.maCat;
       }
     };
@@ -276,7 +384,6 @@ const clearHref = Astro.url.pathname;
       queued = true;
       requestAnimationFrame(() => {
         queued = false;
-        tryReopen();
         apply();
       });
     };
@@ -298,18 +405,33 @@ const clearHref = Astro.url.pathname;
       if (!open || closing) return;
       closing = true;
       open = false;
+      resetPending();
       document.documentElement.classList.remove('ma-filters-open');
       sheet.setAttribute('inert', '');
       document.body.style.overflow = '';
+      delete document.documentElement.dataset.maCat;
       document.getElementById('FiltersTitle')?.click();
+    };
+
+    const commit = (): void => {
+      const next = compose();
+      if (mapsEqual(next, baselineMa())) {
+        close();
+        return;
+      }
+      location.assign(toUrl(next));
     };
 
     sheet.querySelectorAll<HTMLElement>('[data-ma-close]').forEach((el) => {
       el.addEventListener('click', close);
     });
+    applyBtn?.addEventListener('click', commit);
+    clearBtn?.addEventListener('click', () => {
+      wipeAll = true;
+      selections.clear();
+      paintPending();
+    });
 
-    /* Antes de que el link navegue, guardamos la categoría activa para reabrir
-       la hoja en la misma sección después de la recarga (§8). */
     container.addEventListener(
       'click',
       (event) => {
@@ -324,11 +446,9 @@ const clearHref = Astro.url.pathname;
         ) {
           return;
         }
-        const active = rail?.querySelector<HTMLButtonElement>(
-          '.ma-sheet__rail-item[aria-pressed="true"]',
-        );
-        const label = active?.textContent?.trim();
-        if (label) sessionStorage.setItem(STORAGE_KEY, label);
+        event.preventDefault();
+        event.stopPropagation();
+        selectFilter(link);
       },
       true,
     );
@@ -337,7 +457,6 @@ const clearHref = Astro.url.pathname;
       if (event.key === 'Escape' && open) close();
     });
 
-    /* Por si el plugin ya terminó de renderizar antes de que este script corra. */
     schedule();
   }
 </script>

@@ -444,3 +444,25 @@ Filas `.filter-block-item` 48–49px; "Más opciones" revela filas de 49px con
 ### Approval token
 
 Pendiente revisión humana del diff en `src/styles/multiaviso.css` (review_required).
+
+## Session 12 — 2026-09-02
+
+Deferred apply. El usuario vio Session 11 en el teléfono y rechazó la recarga
+al toque: el filtro no se aplica hasta "Ver resultados". Se borra la
+reapertura por `sessionStorage`.
+
+Trade-offs documentados en §8: contadores stale, Marca → Modelo recién después
+de confirmar.
+
+### Archivos
+
+| Archivo | Cambio |
+|---|---|
+| `src/components/MultiavisoCatalog.astro` | `preventDefault` en captura; `selections` + `wipeAll`; commit en "Ver resultados"; X/backdrop descarta; Limpiar es botón. |
+| `src/styles/multiaviso.css` | `[data-ma-pending]` en opciones; punto en el riel; `clear[hidden]`. **review_required** |
+| `documentation/DESIGN.md` | §8: aplicar al final, trade-offs, sin reapertura. |
+
+### Verificación
+
+- `npm run check` / `npm run build` — locales
+- Comportamiento real: `npm run deploy` (plugin no renderiza en local)
