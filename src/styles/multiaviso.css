@@ -91,6 +91,17 @@
   --ma-rule: var(--rule-on-dark);
   --ma-link: var(--brand-bright);
   --ma-link-hover: var(--text-on-dark);
+  /* Loader de carga (§11): DOS tokens, no uno — el ícono ahora tiene dos
+     tintas propias (disco/tuerca oscuro + disco/anillo claro), no una sola
+     silueta que deba adaptarse a la superficie como `--ma-link`. Son las
+     MISMAS en claro y en oscuro a propósito: es un logo, no texto — tiene
+     que leerse igual en todos lados, no invertir contraste como el resto de
+     estos tokens. Probado contra las dos superficies antes de decidir esto
+     (harness, no se commitea). Valores del usuario (`#007fa3` / `#269cc0`)
+     son casi idénticos a `--brand`/`--brand-bright` — se usan los tokens,
+     no los hex, por mandato de DESIGN.md; la diferencia es imperceptible. */
+  --ma-loader-outer: var(--brand);
+  --ma-loader-inner: var(--brand-bright);
 }
 
 .catalog[data-surface='light'] {
@@ -102,6 +113,10 @@
   --ma-rule: var(--rule-on-light);
   --ma-link: var(--brand-deep);
   --ma-link-hover: var(--brand);
+  /* Mismos valores que en `[data-surface='dark']` — ver el comentario de
+     arriba. No es un copy-paste sin pensar: es la decisión. */
+  --ma-loader-outer: var(--brand);
+  --ma-loader-inner: var(--brand-bright);
 }
 
 .catalog {
@@ -164,6 +179,18 @@
 .catalog #MultiavisoContainer {
   min-height: var(--ma-reserve);
   width: 100%;
+  /* El loader de carga (§11, al final del archivo) dibuja un `::before`
+     centrado sobre `.spinner`, que el propio plugin deja con `left/top: 50%`
+     inline. Sin esto esas coordenadas se resuelven contra el ancestro
+     posicionado más cercano fuera de este árbol —en el peor caso el
+     viewport— porque cuando el spinner está visible `#MultiavisoWrapper`
+     (que SÍ es `position: relative`, puesto por el propio plugin, ver §7)
+     todavía no existe: lo inyecta recién al responder el fetch.
+     Seguro de agregar: no es fixed/absolute, no mueve nada del flujo, y los
+     descendientes posicionados que el plugin sí controla (dentro de
+     `#MultiavisoWrapper` / `#ListWrapper`) ya resuelven contra un ancestro
+     más cercano que este, así que no se ven afectados. */
+  position: relative;
 }
 
 .catalog__inner {
@@ -1557,4 +1584,189 @@
   padding-block: var(--space-8);
   text-align: center;
   opacity: 0.7;
+}
+
+/* --------------------------------------------- 11. loader de carga -------- */
+
+/* El plugin usa spin.js 2.x para el loader mientras hace el fetch inicial, y
+   también al enviar los formularios de contacto/comentarios. Config real
+   leída de plugin.js?v=2.1:
+
+     { lines: 11, length: 10, width: 4, radius: 10, corners: 1, rotate: 0,
+       direction: 1, color: "#707070", speed: 1, trail: 60, shadow: false,
+       hwaccel: false, className: "spinner", zIndex: ... }
+
+   `t.container` se resuelve UNA sola vez en todo el plugin:
+
+     n.containerSelector = t.containerSelector,
+     n.container = jQuery(n.containerSelector),
+     n.container.length === 0 && (console.error(...), n.valid = !1)
+
+   (la otra asignación, `n.container = b`, reutiliza ese mismo objeto jQuery
+   ya resuelto). O sea que `t.container[0]` es SIEMPRE `#MultiavisoContainer`
+   — en la carga inicial del listado, en el carrusel, y en los formularios de
+   contacto/comentarios. `spinner.spin()` inserta el nodo como primer hijo de
+   ESE container en los tres casos. Un solo par de selectores alcanza; no
+   hace falta (ni matchea nunca) nada colgando de `#MultiavisoWrapper`.
+
+   Markup generado por spin.js (verificado contra el fuente):
+
+     <div class="spinner" role="progressbar"
+          style="position:absolute; width:0; z-index:2000000000; left:50%; top:50%">
+       <div style="position:absolute; top:-1px; opacity:.25; animation:...">   ×11, sin clase
+         <div style="position:absolute; width:14px; height:4px; background:#707070;
+                     transform-origin:left; transform:rotate(Ndeg) translate(10px,0);
+                     border-radius:2px"></div>
+       </div>
+     </div>
+
+   Los 11 divs NO llevan `display` inline (solo `position` / `top` / `opacity`
+   / `animation`), así que se ocultan con `display: none` sin pelear contra
+   ningún estilo inline y sin `!important` (regla de la cabecera del archivo).
+
+   `.spinner` mismo trae `width: 0` y `left/top: 50%` inline, o sea que no
+   sirve como caja para dibujar nada directo. `top` SÍ viene inline — el caso
+   que la regla 2 de la cabecera reserva para `!important`. Sin acotarlo,
+   `50%` se resuelve contra `--ma-reserve`, que en el listado es 1250px: el
+   loader queda a 625px del tope del contenedor, bien debajo del fold en
+   cualquier teléfono. `min()` en vez de un valor fijo: en el carrusel
+   (`--ma-reserve: 400px`) un tope de 200px COINCIDE con el 50% real, así que
+   ahí sigue centrado de verdad; el cap solo actúa cuando la reserva es
+   grande. 200px deja el loader bien dentro del primer viewport en los
+   teléfonos más chicos (verificado con un harness que simula header + hero
+   arriba del contenedor, scratchpad, no se commitea). */
+.catalog #MultiavisoContainer > .spinner > div {
+  display: none;
+}
+
+.catalog #MultiavisoContainer > .spinner {
+  top: min(50%, 200px) !important;
+}
+
+/* ─── El ícono: TRES capas concéntricas, no una silueta plana ─────────────
+
+   Corrección sobre una pasada anterior de este mismo bloque, que dibujaba el
+   engranaje como una máscara monocroma de 8 dientes (un solo tono, calado
+   sobre el fondo). El usuario midió el favicon real en coordenadas polares y
+   la estructura correcta es OTRA: un disco exterior oscuro, un disco interno
+   claro concéntrico, y ADENTRO de ese disco claro la tuerca/engranaje — en el
+   MISMO color que el disco exterior, no un tercer tono. Una máscara monocroma
+   no alcanza para eso (hay dos tintas reales, no una silueta sobre fondo).
+
+   Se resuelve con DOS pseudo-elementos sobre `.spinner`, no uno:
+
+     ::before — círculo macizo, `border-radius: 50%`, color de fondo/tuerca
+                (`--ma-loader-outer`). Quieto: es un círculo, rotarlo no se
+                nota, y dejarlo fijo es lo que da el efecto de "tuerca que
+                gira DENTRO de un disco quieto" en vez de todo el ícono
+                girando en bloque.
+     ::after  — el disco interno claro (`--ma-loader-inner`) CON la tuerca
+                recortada adentro como hueco (revela el `::before` de atrás,
+                que es del mismo color que la tuerca — por eso no hace falta
+                un tercer tono). Este SÍ rota.
+
+   `::after` se dibuja con `mask-image` + `background-color` (mismo patrón
+   que `#FiltersTitle::before` en §7), pero la máscara no es una silueta
+   simple: es UN path con `fill-rule="evenodd"` y CUATRO subpaths
+   concéntricos que alternan pintado/hueco solos por anidamiento —verificado
+   apuntando `matplotlib.path.Path.contains_point` contra las cuatro formas
+   antes de embeber el data-URI, no solo mirando el render:
+
+     círculo r=7.84                     → PINTADO (disco interno claro)
+     engranaje 8 dientes (tip 6.93/valle 5.00) → HUECO (se ve la tuerca)
+     círculo r=1.28                      → PINTADO (anillo central)
+     círculo r=0.91                      → HUECO (punto central)
+
+   Proporciones — TODAS medidas por el usuario sobre `public/favicon.png` en
+   coordenadas polares (radio real del favicon → viewBox `0 0 24 24`, centro
+   `12,12`, disco exterior tocando el borde). Se dejan documentadas acá para
+   cuando llegue el vector oficial de Sebastián (pendiente, ver README):
+     · disco exterior (`::before`, todo el box):           r = 12.00
+     · disco interno claro:                                 r = 7.84
+     · punta del diente:                                     r = 6.93
+     · valle (fondo entre dientes):                          r = 5.00
+     · anillo central, radio exterior:                       r = 1.28
+     · anillo central, radio interior:                       r = 0.91
+     · 8 dientes uniformes, paso 45°, semiángulo de base ~19°
+       (trapecio ancho) y semiángulo de punta ~8° (no picos).
+   Esta vez el barrido angular SÍ se midió sobre el favicon real punto por
+   punto (no se re-derivó a ojo) — la pasada anterior de este comentario, que
+   hablaba de dientes alternando largos/cortos, era un artefacto de rasterizar
+   el favicon a 68px y quedó corregida en la sesión previa; esta geometría de
+   tres capas es la que reemplaza esa versión entera, no un ajuste sobre ella.
+
+   Colores: el usuario midió `#007fa3` (disco exterior/tuerca) y `#269cc0`
+   (disco interno/anillo) sobre el favicon — prácticamente idénticos a
+   `--brand` (#007F9E) y `--brand-bright` (#1F9CBF). Se usan los TOKENS, no
+   los hex literales: DESIGN.md manda sobre esto y la diferencia de un dígito
+   es imperceptible. Mismos dos tokens en `[data-surface='dark']` y
+   `[data-surface='light']` — es un logo, tiene que leerse igual en todas las
+   páginas, no invertir contraste como `--ma-link`. Confirmado en harness
+   contra las dos superficies antes de decidir esto, no a priori.
+
+   Tamaño: 44px, no 48px. Con la silueta calada de la pasada anterior, 48px
+   se leía liviano (mayormente hueco). Con un disco macizo de dos tonos hay
+   mucha más tinta por pixel, y 48px empezaba a leerse pesado contra el resto
+   del sitio (nada más en esta página tiene tanta superficie sólida de un
+   color). 44px se comparó lado a lado contra 48px en harness: a ese tamaño
+   sigue leyéndose clarísimo como el mismo ícono, con menos peso. */
+.catalog #MultiavisoContainer > .spinner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  background-color: var(--ma-loader-outer);
+  border-radius: 50%;
+}
+
+.catalog #MultiavisoContainer > .spinner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  background-color: var(--ma-loader-inner);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M 19.840,12.000 A 7.84 7.84 0 1 1 4.160,12.000 A 7.84 7.84 0 1 1 19.840,12.000 Z M 10.372,7.272 L 11.036,5.137 L 12.964,5.137 L 13.628,7.272 A 5.000 5.000 0 0 1 14.192,7.506 L 16.171,6.465 L 17.535,7.829 L 16.494,9.808 A 5.000 5.000 0 0 1 16.728,10.372 L 18.863,11.036 L 18.863,12.964 L 16.728,13.628 A 5.000 5.000 0 0 1 16.494,14.192 L 17.535,16.171 L 16.171,17.535 L 14.192,16.494 A 5.000 5.000 0 0 1 13.628,16.728 L 12.964,18.863 L 11.036,18.863 L 10.372,16.728 A 5.000 5.000 0 0 1 9.808,16.494 L 7.829,17.535 L 6.465,16.171 L 7.506,14.192 A 5.000 5.000 0 0 1 7.272,13.628 L 5.137,12.964 L 5.137,11.036 L 7.272,10.372 A 5.000 5.000 0 0 1 7.506,9.808 L 6.465,7.829 L 7.829,6.465 L 9.808,7.506 A 5.000 5.000 0 0 1 10.372,7.272 Z M 13.280,12.000 A 1.28 1.28 0 1 1 10.720,12.000 A 1.28 1.28 0 1 1 13.280,12.000 Z M 12.910,12.000 A 0.91 0.91 0 1 1 11.090,12.000 A 0.91 0.91 0 1 1 12.910,12.000 Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M 19.840,12.000 A 7.84 7.84 0 1 1 4.160,12.000 A 7.84 7.84 0 1 1 19.840,12.000 Z M 10.372,7.272 L 11.036,5.137 L 12.964,5.137 L 13.628,7.272 A 5.000 5.000 0 0 1 14.192,7.506 L 16.171,6.465 L 17.535,7.829 L 16.494,9.808 A 5.000 5.000 0 0 1 16.728,10.372 L 18.863,11.036 L 18.863,12.964 L 16.728,13.628 A 5.000 5.000 0 0 1 16.494,14.192 L 17.535,16.171 L 16.171,17.535 L 14.192,16.494 A 5.000 5.000 0 0 1 13.628,16.728 L 12.964,18.863 L 11.036,18.863 L 10.372,16.728 A 5.000 5.000 0 0 1 9.808,16.494 L 7.829,17.535 L 6.465,16.171 L 7.506,14.192 A 5.000 5.000 0 0 1 7.272,13.628 L 5.137,12.964 L 5.137,11.036 L 7.272,10.372 A 5.000 5.000 0 0 1 7.506,9.808 L 6.465,7.829 L 7.829,6.465 L 9.808,7.506 A 5.000 5.000 0 0 1 10.372,7.272 Z M 13.280,12.000 A 1.28 1.28 0 1 1 10.720,12.000 A 1.28 1.28 0 1 1 13.280,12.000 Z M 12.910,12.000 A 0.91 0.91 0 1 1 11.090,12.000 A 0.91 0.91 0 1 1 12.910,12.000 Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  /* `linear`, no `var(--ease)`: `--ease` es una curva de aceleración/frenado
+     pensada para transiciones que empiezan y terminan (hover, drawer). En un
+     loop infinito produciría un tranco perceptible en cada vuelta.
+     Solo `::after` anima — `::before` es un círculo liso, quieto a propósito
+     (ver el comentario de arriba). Sin `z-index` explícito en ninguno de los
+     dos: son pseudo-elementos del mismo `.spinner`, ninguno declara su
+     propio `z-index`, así que se apilan por orden de generación —`::before`
+     y después `::after`— y `::after` queda arriba sin pelear con el
+     `z-index: 2000000000` inline de `.spinner` (ese z-index ordena a
+     `.spinner` contra SUS hermanos, no a sus propios pseudo-elementos entre
+     sí). Confirmado en harness: el disco exterior no "late" al rotar
+     (concéntrico exacto, mismo centro que `::before`) y la tuerca queda
+     siempre visible encima del disco. */
+  animation: ma-gear-spin 1.1s linear infinite;
+}
+
+@keyframes ma-gear-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Girar sin parar es justo el tipo de movimiento que este guard existe para
+   cortar (DESIGN.md §4). `base.css` ya fuerza `animation-iteration-count: 1`
+   y `animation-duration: 0.01ms` de forma global, lo que en teoría
+   alcanzaría —y acá el riesgo de no anularlo a mano es bajo, porque una
+   rotación que termina en 360deg se ve idéntica a 0deg, sin salto—, pero se
+   anula explícito igual: es el patrón que ya dejó `BrandStrip.astro`
+   (marquee) y es más barato que confiar en la coincidencia. Solo `::after`
+   tiene animación que anular; `::before` nunca tuvo una. Sin pulso de
+   opacidad de reemplazo: el ícono quieto ya comunica "cargando" junto con el
+   `role="progressbar"` que trae el propio nodo del plugin. */
+@media (prefers-reduced-motion: reduce) {
+  .catalog #MultiavisoContainer > .spinner::after {
+    animation: none;
+  }
 }
