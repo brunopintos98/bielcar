@@ -459,7 +459,7 @@ Impacto: **"Contactar ahora" es el único canal de leads del catálogo.** Si reC
 - Prefijar **todo** con `#MultiavisoWrapper`. Nunca escribir un selector suelto como `.item-title`: son clases genéricas y van a chocar con el resto del sitio.
 - La hoja del plugin se inyecta en `<head>` en runtime, después de nuestros estilos. Ganar por especificidad de ID, no por `!important`. Reservar `!important` para casos donde el plugin usa estilos inline.
 - Definir las variables en `html` o en un scope propio, no en `:root` compartido con el plugin.
-- Objetivo del override: que `.item` termine visualmente igual a la card de §5.5, y que `.filter-block-item` se lea como los filtros de premiumcars (texto plano, contador entre paréntesis en `--text-on-dark-faint`, activo en `--brand-bright`).
+- Objetivo del override: que `.item` termine visualmente igual a la card de §5.5, y que `.filter-block-item` se lea como los filtros de premiumcars (texto plano, contador entre paréntesis en `--text-on-dark-faint`, activo en `--brand-bright`). En mobile, el texto plano se mantiene: lo que cambia es el área táctil (48px de alto via padding, ver §8), no el patrón visual.
 
 **Overrides obligatorios, no opcionales:**
 
@@ -566,6 +566,7 @@ Cómo se implementa, porque acota lo que se puede pedir después:
 - **Cada filtro es un link que recarga la página**, así que no hay "aplicar al final". La hoja queda cerrada después de la recarga y "Ver resultados" es, en la práctica, el botón de cerrar.
 - **No hay columna lateral de categorías** como en ML: exigiría rearmar el DOM del plugin en secciones navegables, que es exactamente lo que §6.2 prohíbe.
 - **No es un dialog ARIA completo.** `role="dialog"` / `aria-modal` irían sobre `#FilterContent`, que es nodo del plugin, y el `inert` del Header no se puede reusar porque acá el panel está enterrado en el árbol. Hay lock de scroll, foco en el ✕ al abrir y cierre con `Escape`. El gap es conocido, no un olvido.
+- **Tap target 48px en cada fila de filtro.** `.filter-block-item` y `.filter-block-more` llevan `padding-block: 14px` + `line-height: 20px`. Es content-box (el plugin lo asume), así que 14+14+20 = 48, por encima del mínimo táctil de 44px que ya usa el ✕ de la hoja. Siguen siendo texto plano — no chips, no checkboxes. El `#SortDisplay` y las opciones de `#SortPopupInner` usan la misma cuenta. La hoja **sigue en 80svh**: las filas más altas se absorben con scroll, no agrandando la capa.
 
 ---
 

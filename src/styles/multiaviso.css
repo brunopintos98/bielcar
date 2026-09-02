@@ -789,6 +789,61 @@
     text-align: left;
   }
 
+  /* ─── Tap targets de la hoja ─────────────────────────────────────────────
+     Las reglas globales de §7 solo pintan color y tamaño. El plugin deja
+     `.filter-block-item` en `display: block` con `margin: 2px 0`, o sea filas
+     de ~22px. El mínimo táctil de este archivo ya es 44px (`.ma-sheet__close`).
+     Acá se llega a 48px SOLO en la hoja: el sidebar de 260px no se estira.
+
+     content-box (regla de este archivo): padding y alto se SUMAN.
+     14 + 14 + line-height 20 = 48. Sin `min-height` y sin `width: 100%` +
+     `padding-inline`, que desbordarían el padre.
+
+     `.hidden` del plugin es `display: none` con la misma especificidad que
+     nuestro `display: block` más `.catalog` — empate, gana él porque carga
+     después, y los ítems colapsados siguen colapsados. */
+  .catalog #MultiavisoWrapper .filter-block {
+    display: flex;
+    flex-direction: column;
+    padding-block: var(--space-4);
+    margin-bottom: 0;
+  }
+
+  .catalog #MultiavisoWrapper .filter-block .filter-block-label {
+    margin-bottom: var(--space-2);
+  }
+
+  .catalog #MultiavisoWrapper .filter-block .filter-block-item,
+  .catalog #MultiavisoWrapper .filter-block .filter-block-more {
+    display: block;
+    padding-block: 14px;
+    line-height: 20px;
+  }
+
+  .catalog #MultiavisoWrapper .filter-block .filter-block-item + .filter-block-item,
+  .catalog #MultiavisoWrapper .filter-block .filter-block-item + .filter-block-more {
+    border-top: 1px solid var(--ma-rule);
+  }
+
+  .catalog #MultiavisoWrapper #Counts {
+    padding-block: var(--space-3) var(--space-2);
+  }
+
+  /* `#SortDisplay` no tiene padding en la hoja del plugin, solo font-size.
+     Misma cuenta de 48px. Sin width: 100%: content-box + padding-inline
+     desbordaría. */
+  .catalog #MultiavisoWrapper #SortDisplay {
+    display: block;
+    padding-block: 14px;
+    line-height: 20px;
+  }
+
+  /* El plugin deja `padding: 6px 15px` en las opciones del popup de orden. */
+  .catalog #MultiavisoWrapper #SortPopupInner div a {
+    padding: 14px 15px;
+    line-height: 20px;
+  }
+
   /* ─── Nuestro chrome ─────────────────────────────────────────────────── */
 
   /* Siempre en el árbol en mobile: los hijos son `position: fixed` y el

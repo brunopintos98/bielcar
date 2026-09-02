@@ -2589,5 +2589,55 @@ hoja — por eso el offset es `--ma-sheet-h`.
 - **Sin verificar en local:** interacción con el `slideToggle` de jQuery sobre
   `#FilterContent` (el plugin no renderiza). Eso sale con `npm run deploy`.
 
+---
+
+## Session 34 — web-feature on `site` (started 2026-09-02T18:08:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-02T18:08:00Z
+session_ended_utc: 2026-09-02T18:12:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/styles/multiaviso.css
+  - documentation/DESIGN.md
+```
+
+### 1. Initial approved PLAN — 2026-09-02T18:08:00Z
+
+Tap targets de la hoja de filtros mobile: filas de 48px (14+14+20, content-box)
+en `.filter-block-item` / `.filter-block-more` / `#SortDisplay` / opciones de
+`#SortPopupInner`. Hairline entre filas. Aire entre grupos. Solo
+`@media (max-width: 699px)`. Hoja sigue en 80svh. Texto plano, no chips.
+DESIGN.md §6.3 y §8 enmendados.
+
+**Archivos:** `src/styles/multiaviso.css`, `documentation/DESIGN.md`.
+
+**Alternativa más fuerte considerada.** Chips o pills. Se descarta: §6.3 pide
+texto plano y §4 reserva `--radius-full` para FAB y pills de filtro activo.
+
+**Supuesto que sostiene el enfoque.** El plugin ya declara `display: block` en
+el ítem y `display: none` en `.hidden`, con empate de especificidad a nuestro
+favor en el caso visible y al del plugin en el colapsado (carga después).
+
+**Qué lo falsificaría.** Que "Más opciones" revele filas chatas porque jQuery
+escriba `display: inline` inline. Se verifica en producción.
+
+**Approval token:** "proceed"
+
+### 2. Verification — 2026-09-02T18:12:00Z
+
+- `npm run check`: 36 archivos, 0 errores
+- Chrome headless 393px, markup mock de `.filter-block` + hoja del plugin:
+  - primer ítem 48px (14+14+20)
+  - ítem siguiente 49px (hairline de 1px)
+  - `.hidden` sigue en `display: none` / height 0
+  - "Más opciones" 49px, `#SortDisplay` 50px, grupo con padding 16px
+- **Falta en local:** el listado real. Verificar en `bielcar.vercel.app` después
+  de `npm run deploy`, incluyendo "Más opciones" expandido.
+
+
 
 
