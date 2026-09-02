@@ -298,7 +298,7 @@
 .catalog #MultiavisoWrapper #List .item {
   background: transparent;
   border: 0;
-  border-radius: var(--radius-none);
+  border-radius: var(--radius-md);
   box-shadow: none;
   /* El plugin deja 3px abajo, que con SU precio de 23px y su card de 238px
      alcanzaba. Con la card a ~630px y el precio a 34px el número quedaba
@@ -326,7 +326,7 @@
   height: auto;
   aspect-ratio: 16 / 10;
   overflow: hidden;
-  border-radius: var(--radius-none);
+  border-radius: var(--radius-md);
 }
 
 .catalog #MultiavisoWrapper #List .item .item-image a {
@@ -335,7 +335,7 @@
   height: 100%;
   background-size: cover;
   background-position: center;
-  border-radius: var(--radius-none);
+  border-radius: var(--radius-md);
   transition: transform var(--dur) var(--ease);
 }
 
@@ -419,7 +419,7 @@
 .catalog #MultiavisoWrapper .CarouselWrapper .carousel-item {
   background: transparent;
   border: 0;
-  border-radius: var(--radius-none);
+  border-radius: var(--radius-md);
   box-shadow: none;
   /* Mismo criterio que la card del listado. El plugin deja 5px acá. */
   padding-bottom: var(--space-6);
@@ -461,6 +461,10 @@
   height: auto;
   aspect-ratio: 16 / 10;
   overflow: hidden;
+  /* Antes esta cadena no seteaba radio (el padre `.carousel-item` de arriba sí
+     lo hacía). Sistema de radio de imágenes: mismo valor que la card del
+     listado (§5.5, §4 de DESIGN.md). */
+  border-radius: var(--radius-md);
 }
 
 /* Acá el plugin NO usa `height`: usa el truco viejo de `height: 0` +
@@ -473,6 +477,7 @@
   padding-bottom: 0;
   background-size: cover;
   background-position: center;
+  border-radius: var(--radius-md);
   transition: transform var(--dur) var(--ease);
 }
 
@@ -1224,6 +1229,41 @@
   display: inline-block;
   font-size: var(--fs-body-sm);
   color: var(--ma-link);
+}
+
+/* ⚠️  NO VERIFICADO — confirmar contra DOM real en bielcar.vercel.app.
+   Sistema de radio de imágenes (DESIGN.md §4): foto principal y tira de
+   miniaturas de `#MediaContainer` también llevan `--radius-md`.
+
+   El catálogo no renderiza fuera de producción y el plugin inyecta este
+   markup client-side después de pegarle a su propia API, así que ni un curl
+   al deploy muestra el HTML real — no hay forma de capturar el DOM de
+   `#MediaContainer` sin abrir devtools sobre una URL `?ma_carid=` en
+   bielcar.vercel.app. §9.1 documenta la estructura solo como "swiper de
+   fotos + thumbs"; el único selector real confirmado en esta zona hasta
+   ahora es `.thumbs-container .swiper-button-prev/next` (las flechas,
+   sección 9 más abajo).
+
+   Los selectores de acá abajo son la mejor apuesta siguiendo la convención
+   Swiper que el propio `.thumbs-container` ya confirma: `.swiper-slide` es
+   el nombre estándar del plugin Swiper para cada foto/miniatura individual.
+   `overflow: hidden` va puesto a propósito aunque el swiper padre
+   probablemente ya lo tenga para su propio mecanismo de carrusel — así el
+   radio clipea lo que sea que haya adentro (`<img>` o un `<a>` con
+   background-image, como en el listado) sin depender de esa suposición.
+
+   Si al desplegar esto no pinta nada, es que el selector no matchea: revisar
+   con devtools y corregir en una sesión de seguimiento (no es un fallo de la
+   tarea, es la limitación conocida de no poder capturar este DOM fuera de
+   producción). */
+.catalog #MultiavisoWrapper #MediaContainer .swiper-slide {
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.catalog #MultiavisoWrapper .thumbs-container .swiper-slide {
+  overflow: hidden;
+  border-radius: var(--radius-md);
 }
 
 .catalog #MultiavisoWrapper .ItemTitle {

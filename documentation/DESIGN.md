@@ -26,7 +26,7 @@ Se toma el lenguaje de premiumcars, no su contenido.
 **Se copia:**
 - Alternancia de bandas oscuras y bandas claras a ancho completo.
 - Imagen full-bleed como protagonista, tipografía encima, sin cajas ni tarjetas flotantes.
-- Radio 0 en casi todo. Sin sombras. La separación es por contraste de banda, no por elevación.
+- Radio 0 en casi todo. Sin sombras. La separación es por contraste de banda, no por elevación. **Enmienda (ver §4): las superficies de foto llevan `--radius-md` (8px)** — cambio de sistema decidido después de la redacción original de esta sección, no una excepción de una sola página. El resto (cards de vehículo como caja, formularios, botones fantasma) sigue en radio 0 o en su propio token.
 - Formularios con inputs de línea inferior, sin caja.
 - Franja de marcas en negro, wordmarks en blanco, sin fondo por marca.
 - Footer partido: datos a la izquierda, mapa de Google a la derecha, a ancho completo.
@@ -36,6 +36,10 @@ Se toma el lenguaje de premiumcars, no su contenido.
 - El split "Autos y camionetas / Tractores". No hay tractores.
 - Los inputs con solo línea inferior y placeholder gris claro sobre fondo claro. Contraste insuficiente. Ver §5.4.
 - Las cards redondeadas de Porsche. Mezclar radio 16px con el resto en radio 0 rompe el sistema. Se toma el patrón de composición, no el radio.
+
+  **Enmienda posterior:** esto se sigue leyendo tal cual se escribió, pero quedó parcialmente superado. El usuario pidió más adelante redondear las imágenes del catálogo y del detalle de vehículo, y frente al conflicto explícito con esta línea eligió, sobre tres opciones, la más sutil de las tres: **8px, aplicado como cambio de sistema a todas las superficies de foto del sitio** (no como excepción del catálogo). La distancia con Porsche es justamente esa: 16px compite con el resto en radio 0, 8px no — es lo bastante chico como para leerse como un ajuste del sistema, no como un préstamo de otro sitio. Ver §4 para la escala y §6.3/§9 para el detalle de vehículo.
+
+  **Excepción explícita dentro de esta misma enmienda: `AccessTiles` (los 3 tiles de acceso del Home) queda en radio 0, a propósito.** Los tiles están pegados borde a borde sin gap —la separación es el borde de 1px de cada tile, no aire, y eso es una decisión ya documentada del propio componente (§1: "El bloque que reemplaza al 2x2")—. Redondear las 4 esquinas de cada tile dejaría, en cada divisor entre dos tiles, dos esquinas redondeadas enfrentadas sin gap real de por medio: el fondo se asoma en el medio como un rombo. Agregar gap para evitarlo rompería el patrón de "separación por borde" que el componente ya eligió. Se prefirió mantener esta única superficie en radio 0 antes que aceptar el artefacto o el gap. No es un olvido — es la única superficie de foto del sitio que quedó afuera del cambio de sistema, y esta nota es la que lo registra para que la próxima sesión no la lea como una inconsistencia sin explicar.
 
 **El bloque que reemplaza al 2x2:** una grilla de 3 accesos (0km, Usados, Todos) con el mismo tratamiento de imagen full-bleed y label en la esquina inferior izquierda. Mismo patrón, contenido de Bielcar.
 
@@ -180,10 +184,13 @@ Muchos bloques van a **ancho de viewport completo** (héroes, tiles de imagen, f
 **Forma**
 
 ```css
---radius-none:  0;      /* imágenes, cards de vehículo, tiles, inputs */
+--radius-none:  0;      /* cards de vehículo (fondo/borde, no la foto), inputs, AccessTiles (excepción, ver §1) */
 --radius-sm:    2px;    /* botones */
+--radius-md:    8px;    /* imágenes: card de catálogo, carrusel de destacados, foto+miniaturas del detalle, heroes, foto de /nosotros */
 --radius-full:  9999px; /* solo FAB de WhatsApp y pills de filtro activo */
 ```
+
+**`--radius-md` es una enmienda, no parte de la redacción original de este documento** (ver §1, "No se copia"). Se introdujo cuando el usuario pidió redondear las imágenes del catálogo y del detalle de vehículo: en vez de tratarlo como excepción de esas dos páginas, se decidió como cambio de sistema — el token se aplica a toda superficie de foto del sitio (catálogo, carrusel, detalle, heroes, la foto de /nosotros), con la única excepción explícita de `AccessTiles` (ver §1). 8px es el más sutil de los valores considerados: pelea lo menos posible con el resto del sitio en radio 0.
 
 Sin `box-shadow` en ningún componente estático. La única sombra permitida es la del FAB flotante, porque flota de verdad:
 `box-shadow: 0 4px 16px rgba(0,0,0,0.35)`.
@@ -250,7 +257,7 @@ Esta es la única card que controlamos. La del listado la genera el plugin, ver 
 ```
 ┌────────────────────────┐
 │                        │
-│      imagen 16:10      │  full-bleed, sin radio, overflow hidden
+│      imagen 16:10      │  full-bleed, radio 8px (--radius-md), overflow hidden
 │                        │
 ├────────────────────────┤
 │ Mitsubishi Outlander   │  20px / 600 / body

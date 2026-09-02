@@ -96,8 +96,22 @@
   --space-32: 128px;
 
   /* ---------------------------------------------------------------- forma */
-  --radius-none: 0;       /* imágenes, cards, tiles, inputs */
+  /* --radius-md se agregó en una sesión posterior a la redacción original de
+     este archivo (DESIGN.md §4 lo documenta como enmienda, no como valor
+     original). Decisión del usuario: redondear TODAS las superficies de foto
+     del sitio con el valor más sutil de los ofrecidos, para pelear lo menos
+     posible con la estética angular del resto. Ver DESIGN.md §1 y §4.
+
+     Excepción explícita: `AccessTiles` (los 3 tiles de acceso del Home) NO
+     lleva este radio. Están pegados borde a borde sin gap —la separación es
+     el borde de 1px, a propósito (§1)— y redondear las 4 esquinas de cada
+     tile dejaría esquinas enfrentadas sin gap real entre medio, revelando el
+     fondo en cada divisor. Se prefirió mantener esa superficie en radio 0
+     antes que aceptar el artefacto o romper el patrón "separación por
+     borde, no por aire". Ver DESIGN.md §4. */
+  --radius-none: 0;       /* cards de vehículo (fondo/borde, no la foto), inputs, AccessTiles (excepción, ver nota arriba) */
   --radius-sm:   2px;     /* botones */
+  --radius-md:   8px;     /* imágenes: catálogo, carrusel, detalle, heroes, foto de /nosotros */
   --radius-full: 9999px;  /* solo FAB y pills de filtro activo */
 
   /* La única sombra permitida: el FAB flota de verdad (§4) */
