@@ -24,7 +24,7 @@ Teléfono: {telefono}`;
 
 <section class="sform band band--light" id="agendar">
   <div class="container sform__inner">
-    <div class="sform__intro">
+    <div class="sform__intro" data-reveal>
       <p class="eyebrow sform__eyebrow">Agende</p>
       <h2 class="h2 sform__title">Pida su turno de service.</h2>
       <p class="lede sform__lede">
@@ -33,7 +33,13 @@ Teléfono: {telefono}`;
       </p>
     </div>
 
-    <div class="sform__form">
+    <div class="sform__form reveal-fields" data-reveal="group">
+      {/* `data-reveal="group"` + `.reveal-fields` (base.css): el observer
+          solo vigila ESTE div, y el stagger real de los 5 campos + el
+          submit lo hacen los selectores nth-child del helper — así no hace
+          falta tocar `FormField`/`WhatsAppForm`, compartidos con
+          `/contacto`, que no lleva este tratamiento. DESIGN §4: 40ms de
+          paso, 8px de shift, "suave" a propósito. */}
       {/* `line="service"`: el turno de taller va al WhatsApp del taller, no al
           de ventas. Ver CONTACT en site.ts. */}
       <WhatsAppForm line="service" template={TEMPLATE} submitLabel="Agendar por WhatsApp">

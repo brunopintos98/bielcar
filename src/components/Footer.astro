@@ -102,7 +102,7 @@ const year = new Date().getFullYear();
 
   {!hasOwnContact && (
   <div class="footer__split">
-    <div class="footer__data">
+    <div class="footer__data" data-reveal style="--i: 0">
       <img
         class="footer__logo"
         src={LOGO.onDark}
@@ -160,7 +160,7 @@ const year = new Date().getFullYear();
       </ul>
     </div>
 
-    <div class="footer__map">
+    <div class="footer__map" data-reveal="fade" style="--i: 1">
       <iframe
         src={mapSrc}
         title={`Mapa de ${site.address}`}
@@ -233,6 +233,8 @@ const year = new Date().getFullYear();
     display: grid;
     grid-template-columns: 1fr 1fr;
     min-height: 360px;
+    /* DESIGN §4: stagger corto entre las dos columnas del footer. */
+    --reveal-step: 40ms;
   }
 
   .footer__data {

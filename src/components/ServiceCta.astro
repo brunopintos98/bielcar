@@ -24,13 +24,13 @@ const href = waLink('Hola, quiero agendar un service.', 'service');
 
 <section class="service-cta band band--raised">
   <div class="container service-cta__inner">
-    <div>
+    <div data-reveal>
       <h2 class="h2">¿Necesita un service?</h2>
       <p class="lede service-cta__lede">
         Escríbanos y coordinamos día y hora.
       </p>
     </div>
-    <div class="service-cta__action">
+    <div class="service-cta__action" data-reveal="right" style="--reveal-delay: 120ms">
       <Button variant="action" href={href} missing="número de WhatsApp" external>
         Agendar service
       </Button>

@@ -40,7 +40,7 @@ const serviceBrands = list(SERVICE_BRANDS);
 
   <section class="sobre band band--dark">
     <div class="container sobre__split">
-      <div class="sobre__media">
+      <div class="sobre__media" data-reveal="left">
         {/* El contenedor es 4:3 y el archivo también, así que la foto entra
             ENTERA — `object-fit: cover` no llega a recortar nada.
             `sizes`: media pantalla en desktop, ancho completo apilada. */}
@@ -56,7 +56,7 @@ const serviceBrands = list(SERVICE_BRANDS);
         />
       </div>
 
-      <div class="sobre__text">
+      <div class="sobre__text" data-reveal="right">
         <p class="eyebrow">Bielcar Automóviles</p>
         <h2 class="h2 sobre__title">Estamos en {site.address}.</h2>
 
@@ -83,11 +83,18 @@ const serviceBrands = list(SERVICE_BRANDS);
 
   <section class="equipo band band--raised">
     <div class="container">
-      <p class="eyebrow">Equipo</p>
-      <h2 class="h2 equipo__title">Quiénes lo atienden.</h2>
-      <p class="lede equipo__lede">
-        La grilla de vendedores va acá, con nombre, rol y contacto directo.
-      </p>
+      {/* `data-reveal` va SOLO acá adentro — el <Placeholder> de abajo queda
+          deliberadamente afuera de cualquier reveal. No es el fail-safe
+          general (ese cubre "JS bloqueado"): es la regla explícita del
+          proyecto de que este placeholder en particular nunca dependa de
+          nada para verse, ni siquiera de un scroll. */}
+      <div data-reveal>
+        <p class="eyebrow">Equipo</p>
+        <h2 class="h2 equipo__title">Quiénes lo atienden.</h2>
+        <p class="lede equipo__lede">
+          La grilla de vendedores va acá, con nombre, rol y contacto directo.
+        </p>
+      </div>
 
       {/* Un solo <Placeholder> y no una grilla de tarjetas vacías: no sabemos
           ni los nombres ni CUÁNTOS son, así que dibujar tres huecos ya sería

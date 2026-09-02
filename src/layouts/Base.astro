@@ -197,6 +197,18 @@ const businessSchema = {
 
     <script type="application/ld+json" is:inline set:html={JSON.stringify(businessSchema)} />
 
+    {/* Reveal on scroll — DESIGN.md §4 (enmienda), fail-safe obligatorio.
+        Esta línea es TODO lo que decide si el reveal existe: agrega
+        `.js-reveal` a `<html>` de forma síncrona, antes de que el body se
+        pinte. `base.css` solo pone `opacity: 0` bajo `html.js-reveal`, así
+        que si este script no corre —bloqueado, error, crawler— la clase
+        nunca aparece y el sitio se ve completo desde el primer render. No
+        depende de `IntersectionObserver` ni de ningún otro script: por eso
+        va sola, `is:inline`, y no se fusiona con el observer de abajo. */}
+    <script is:inline>
+      document.documentElement.classList.add('js-reveal');
+    </script>
+
     <slot name="head" />
   </head>
 
@@ -208,5 +220,37 @@ const businessSchema = {
     </main>
     <Footer />
     <WhatsAppFab />
+
+    {/* Un solo observer para todo el reveal on scroll del sitio (DESIGN.md
+        §4). No es `is:inline`: no toca el DOM del plugin, no necesita el
+        orden global de `MultiavisoScripts.astro`, y Astro lo tipa con
+        `astro check`. Si no corre por lo que sea (a diferencia del script
+        de arriba, que es el único punto de fallo del fail-safe), el peor
+        caso es que `.js-reveal` quedó puesta y `[data-reveal]` nunca gana
+        `.is-revealed` — por eso el fallback de abajo revela todo de una
+        si `IntersectionObserver` no existe, en vez de asumir que siempre
+        está disponible. */}
+    <script>
+      const targets = document.querySelectorAll<HTMLElement>('[data-reveal]');
+
+      if (targets.length > 0) {
+        if (!('IntersectionObserver' in window)) {
+          targets.forEach((el) => el.classList.add('is-revealed'));
+        } else {
+          const io = new IntersectionObserver(
+            (entries) => {
+              for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                entry.target.classList.add('is-revealed');
+                io.unobserve(entry.target);
+              }
+            },
+            { threshold: 0.15, rootMargin: '0px 0px -10% 0px' }
+          );
+
+          targets.forEach((el) => io.observe(el));
+        }
+      }
+    </script>
   </body>
 </html>

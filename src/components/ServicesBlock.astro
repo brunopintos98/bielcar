@@ -47,7 +47,7 @@ const items = SERVICES;
 
 <section class="services band band--light">
   <div class="container services__inner">
-    <div class="services__intro">
+    <div class="services__intro" data-reveal="left">
       <p class="eyebrow services__eyebrow">Qué hacemos</p>
       <h2 class="h2 services__title">Todo en un mismo lugar.</h2>
       <p class="lede services__lede">
@@ -61,8 +61,8 @@ const items = SERVICES;
 
     <ul class="services__grid">
       {
-        items.map((item) => (
-          <li class="service">
+        items.map((item, i) => (
+          <li class="service" data-reveal style={`--i: ${i}`}>
             <Icon name={item.icon} size={40} class="service__icon" />
             <h3 class="service__title">{item.title}</h3>
             <p class="service__line">{item.blurb}</p>

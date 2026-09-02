@@ -201,6 +201,12 @@ Sin `box-shadow` en ningún componente estático. La única sombra permitida es 
 --ease: cubic-bezier(0.2, 0, 0, 1);
 --dur:  220ms;
 --dur-drawer: 400ms;
+
+/* Reveal on scroll — enmienda, ver más abajo */
+--dur-reveal:      560ms;
+--reveal-shift:    20px;
+--reveal-shift-x:  32px;
+--reveal-step:     70ms;
 ```
 
 - Hover de card: `transform: scale(1.03)` sobre la imagen, dentro de un contenedor con `overflow: hidden`. La card no se mueve, solo la foto.
@@ -208,8 +214,24 @@ Sin `box-shadow` en ningún componente estático. La única sombra permitida es 
 - Nav mobile: hamburguesa de dos líneas desiguales (abajo ~2/3, alineadas a la derecha). Morphan a cruz en `--dur`. El drawer entra desde la derecha (`translateX`) en `--dur-drawer`, más lento a propósito.
 - Hoja de filtros mobile: el chrome (backdrop, superficie, barras) entra en `--dur-drawer`. Backdrop en fade; superficie y barras en `translateY(--ma-sheet-h)` desde abajo. **No** se aplica `transform` al wrapper `.ma-sheet` ni a ningún ancestro de `#MultiavisoWrapper` — eso crearía containing block y desanclaría el `position: fixed` del panel. `#FilterContent` sigue creciendo con la animación de `height` de jQuery.
 - Press: `:active { transform: scale(0.97) }` en botones, FAB y hamburguesa. Con `prefers-reduced-motion: reduce` el scale no se aplica.
-- Nada de reveal on scroll ni transiciones de página. En un sitio de catálogo agrega latencia percibida sin aportar.
-- Respetar `prefers-reduced-motion: reduce` desactivando el scale de las cards, el press, y las transiciones del drawer / hamburguesa / hoja de filtros (el reset de `base.css` ya anula `transition-duration`).
+- **Reveal on scroll: SÍ, desde esta enmienda.** Ver §4.1. Lo que sigue prohibido, sin cambios, es la transición de PÁGINA: nada de `ClientRouter` / view transitions (§6.2, `astro.config.mjs`). Son dos cosas distintas — una es cómo entra el contenido dentro de una página que ya cargó completa, la otra es cómo se navega entre páginas — y solo la primera se revirtió acá.
+- Respetar `prefers-reduced-motion: reduce` desactivando el scale de las cards, el press, las transiciones del drawer / hamburguesa / hoja de filtros, y el reveal on scroll (el reset de `base.css` ya anula `transition-duration` / `animation-duration`, y desde esta enmienda también `transition-delay` / `animation-delay` — sin eso un elemento con stagger alto seguiría esperando su turno aunque la duración ya esté en cero).
+
+### 4.1 Reveal on scroll (enmienda)
+
+Esta sección reemplaza la línea de arriba que decía "nada de reveal on scroll ni transiciones de página. En un sitio de catálogo agrega latencia percibida sin aportar." **El usuario, dueño de este documento, revirtió esa decisión** — mismo patrón que la enmienda de radio de imágenes en §1: una regla que existía se vuelve a abrir porque cambió el criterio, no porque la razón original fuera falsa. La razón original (latencia percibida en un catálogo) sigue siendo válida como advertencia — por eso la intensidad es contenida y el listado del plugin queda explícitamente afuera — pero deja de ser un veto.
+
+**Mecanismo:** `IntersectionObserver` + CSS puro, sin librerías. Un solo observer para todo el sitio, en `src/layouts/Base.astro`: `threshold: 0.15`, `rootMargin: '0px 0px -10% 0px'`, `unobserve` al disparar — nunca re-anima.
+
+**Intensidad, a propósito contenida:** fade + `translateY(20px)`, 560ms, stagger de 70ms entre ítems de una misma lista. Reusa `--ease`, no una curva nueva.
+
+**Opt-in por atributo — `data-reveal`, nunca una regla global.** `section { opacity: 0 }` sin acotar es exactamente el error que este proyecto ya evita con Tailwind (§ "No se copia" y CLAUDE.md): el markup del plugin lo heredaría. Variantes: `data-reveal="left"` / `"right"` (entra desde el costado, `--reveal-shift-x: 32px`), `data-reveal="fade"` (solo opacidad, sin desplazamiento — mapas e iframes, que moviéndose se ven baratos), `data-reveal="group"` (no se anima a sí mismo, pero el observer lo sigue marcando `.is-revealed` para que un componente encadene la entrada de sus propios hijos vía selectores — ver el helper `.reveal-fields` de `ServiceForm`, que le da su stagger sin tocar `FormField` ni `WhatsAppForm`, compartidos con `/contacto`).
+
+**Fail-safe obligatorio, no opcional.** El estado inicial (`opacity: 0`) solo se activa bajo `html.js-reveal`, y esa clase la agrega un único script `is:inline` en el `<head>` de `Base.astro` — nada más depende de esa clase. Si el JS no corre (bloqueado, error, crawler), la clase nunca aparece y el sitio se ve completo desde el primer render. Sitio estático que vive del SEO: esto no se negocia.
+
+**Dónde NO va, sin excepción:** dentro de `#MultiavisoContainer` / `#MultiavisoWrapper`. El listado de vehículos (las cards que genera el plugin) no se anima — cero `data-reveal` ahí, ni en `MultiavisoCatalog.astro` ni en `multiaviso.css`. Fuera de eso, hero de home y de página interna van **on-load** (CSS `animation`, no el observer): están sobre el fold y gatearlos por scroll castigaría el LCP.
+
+**La regla que no se rompe, la misma de §8:** el `transform` va siempre en el elemento que se anima, nunca en un ancestro de `#MultiavisoWrapper` — crea containing block y desancla el `position: fixed` de la hoja de filtros mobile. Por el mismo motivo, ningún wrapper de reveal lleva `will-change: transform` (mismo efecto colateral, otro nombre) ni `overflow: hidden` alrededor del catálogo.
 
 ---
 

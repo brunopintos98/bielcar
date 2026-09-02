@@ -81,13 +81,14 @@ const missingLogos = entries.filter((b) => !b.logo).map((b) => b.name);
 <section class="sbrands" aria-label="Marcas de servicio oficial">
   <ul class="sbrands__list">
     {
-      entries.map((brand) => (
+      entries.map((brand, i) => (
         <li>
           <a
             class="sbrand"
             href={brand.href}
             aria-label={`Agendar service oficial ${brand.name}`}
-            style={`--logo-h: ${brand.maxHeight}px`}
+            style={`--logo-h: ${brand.maxHeight}px; --i: ${i}`}
+            data-reveal
           >
             <span class="sbrand__media">
               {brand.logo ? (
@@ -145,6 +146,8 @@ const missingLogos = entries.filter((b) => !b.logo).map((b) => b.name);
     list-style: none;
     margin: 0;
     padding-inline: var(--gutter);
+    /* DESIGN §4: stagger 60ms para esta franja de 4 marcas. */
+    --reveal-step: 60ms;
   }
 
   /* Sin la etiqueta debajo, el link es solo la caja del logo. El padding

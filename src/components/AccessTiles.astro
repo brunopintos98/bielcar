@@ -79,7 +79,7 @@ const missing = tiles.filter((t) => !t.photo).map((t) => t.eyebrow);
     {
       tiles.map((tile, i) => (
         <li>
-          <a class="tile" href={tile.href}>
+          <a class="tile" href={tile.href} data-reveal style={`--i: ${i}`}>
             <span class="tile__media" data-empty={tile.photo ? undefined : 'true'}>
               {tile.photo ? (
                 <Image
@@ -132,6 +132,11 @@ const missing = tiles.filter((t) => !t.photo).map((t) => t.eyebrow);
     list-style: none;
     margin: 0;
     padding: 0;
+    /* DESIGN §4: caso con shift e intervalo propios, más grandes que el
+       default — el tile es una superficie mucho más grande que el resto de
+       lo que usa `data-reveal`, y 20px/70ms se leía tímido acá. */
+    --reveal-shift: 24px;
+    --reveal-step: 90ms;
   }
 
   .tile {

@@ -153,8 +153,20 @@ const { title, lede, image } = Astro.props;
     padding-block: var(--space-12);
   }
 
+  /* On-load, NO on-scroll — mismo criterio que HomeHero y PageHero (§4).
+     Solo el texto anima: la imagen es la LCP de la página y no se toca. */
+  .hero h1 {
+    animation: photo-hero-in var(--dur-reveal) var(--ease) both;
+  }
+
+  @keyframes photo-hero-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
   .hero__lede {
     margin-top: var(--space-6);
+    animation: photo-hero-in var(--dur-reveal) var(--ease) 80ms both;
   }
 
   @media (max-width: 899px) {

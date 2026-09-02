@@ -88,7 +88,7 @@ const emails =
 
   <section class="contacto band band--dark">
     <div class="container contacto__split">
-      <div class="contacto__form">
+      <div class="contacto__form" data-reveal style="--i: 0">
         <h2 class="h2">Mándenos su consulta.</h2>
         <p class="lede contacto__lede">
           Complete los datos y se abre WhatsApp con el mensaje ya escrito.
@@ -98,7 +98,7 @@ const emails =
         </div>
       </div>
 
-      <div class="contacto__data">
+      <div class="contacto__data" data-reveal style="--i: 1">
         <h2 class="h3 contacto__data-title">Dónde estamos</h2>
 
         <ul class="dl">
@@ -174,7 +174,7 @@ const emails =
     </div>
   </section>
 
-  <section class="mapa" aria-label={`Mapa de ${site.address}`}>
+  <section class="mapa" aria-label={`Mapa de ${site.address}`} data-reveal="fade">
     <iframe
       src={mapSrc}
       title={`Mapa de ${site.address}`}

@@ -93,6 +93,30 @@ const media = PHOTOS.homeHero;
        más suave que en las páginas internas (0.7 contra 0.6) porque acá el
        hero es la portada y la foto tiene que respirar. */
     filter: brightness(0.7);
+    /* Ken-burns leve, on-load — DESIGN.md §4. Transform en la propia imagen,
+       no en `.hero` (que es el que clipea con `overflow: hidden`): así el
+       recorte se mantiene fijo y lo único que se mueve es el encuadre de
+       adentro. No usa `will-change`: es una animación de una sola vez, no
+       hace falta prometerle nada al compositor. */
+    animation: hero-kenburns 1.2s var(--ease) both;
+  }
+
+  @keyframes hero-kenburns {
+    from { transform: scale(1.06); }
+    to   { transform: scale(1); }
+  }
+
+  /* On-load, NO on-scroll: el hero está sobre el fold y gatearlo por el
+     observer castigaría el LCP (§4). Stagger h1 → lede → botón, 80ms de
+     paso, 12px de shift — la imagen NO se anima en opacidad, es la imagen
+     LCP de todo el sitio. */
+  .hero h1 {
+    animation: hero-in var(--dur-reveal) var(--ease) both;
+  }
+
+  @keyframes hero-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
 
@@ -115,10 +139,12 @@ const media = PHOTOS.homeHero;
 
   .hero__lede {
     margin-top: var(--space-6);
+    animation: hero-in var(--dur-reveal) var(--ease) 80ms both;
   }
 
   .hero__cta {
     margin-top: var(--space-8);
+    animation: hero-in var(--dur-reveal) var(--ease) 160ms both;
   }
 
   @media (max-width: 899px) {

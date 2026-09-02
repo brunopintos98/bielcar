@@ -67,7 +67,18 @@ const href = isService
     box-shadow: var(--shadow-fab);
     transition:
       background-color var(--dur) var(--ease),
-      transform var(--dur) var(--ease);
+      transform var(--dur) var(--ease),
+      opacity var(--dur) var(--ease);
+    /* Entra desde el costado al cargar. On-load, no gateado por `.js-reveal`:
+       es una microinteracción del FAB, no reveal on scroll. `transform` va
+       en el propio FAB, que es `position: fixed` y no tiene nada que ver
+       con `#MultiavisoWrapper`. */
+    animation: fab-enter var(--dur-reveal) var(--ease) 300ms both;
+  }
+
+  @keyframes fab-enter {
+    from { opacity: 0; transform: translateX(var(--reveal-shift-x)); }
+    to   { opacity: 1; transform: translateX(0); }
   }
 
   .fab:hover {
@@ -76,6 +87,16 @@ const href = isService
 
   .fab:active:not(.fab--missing) {
     transform: scale(0.97);
+  }
+
+  /* Se esconde bajando (deslizándose fuera, abajo) al scrollear hacia abajo
+     y vuelve al scrollear hacia arriba — ver el script. `!important` NO
+     hace falta: la especificidad de una sola clase alcanza y pisa el
+     `transform: none` que deja la animación de entrada al terminar. */
+  .fab--hidden {
+    transform: translateY(calc(100% + var(--space-8)));
+    opacity: 0;
+    pointer-events: none;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -109,3 +130,40 @@ const href = isService
     }
   }
 </style>
+
+<script>
+  /* Se esconde al bajar, vuelve a aparecer al subir. Microinteracción, no
+     reveal: corre siempre, no depende de `.js-reveal` ni del observer. */
+  const fab = document.querySelector<HTMLElement>('.fab');
+
+  if (fab) {
+    const THRESHOLD = 80;
+    const DELTA_MIN = 4;
+    let lastY = window.scrollY;
+    let ticking = false;
+
+    function sync(): void {
+      const y = window.scrollY;
+      const delta = y - lastY;
+
+      if (y <= THRESHOLD || delta < -DELTA_MIN) {
+        fab?.classList.remove('fab--hidden');
+      } else if (delta > DELTA_MIN) {
+        fab?.classList.add('fab--hidden');
+      }
+
+      lastY = y;
+      ticking = false;
+    }
+
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(sync);
+      },
+      { passive: true }
+    );
+  }
+</script>

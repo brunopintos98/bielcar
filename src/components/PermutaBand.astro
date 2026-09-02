@@ -33,9 +33,11 @@ const href = waLink('Hola, quiero consultar por una permuta.');
 
 <section class="permuta band--light">
   <div class="container">
-    <h2 class="h2">¿Tiene un usado?</h2>
-    <p class="permuta__lede">Lo tomamos como parte del pago.</p>
-    <div class="permuta__cta">
+    <div data-reveal>
+      <h2 class="h2">¿Tiene un usado?</h2>
+      <p class="permuta__lede">Lo tomamos como parte del pago.</p>
+    </div>
+    <div class="permuta__cta" data-reveal="right" style="--reveal-delay: 120ms">
       <Button variant="action" href={href} missing="número de WhatsApp" external>
         Consultar por permuta
       </Button>

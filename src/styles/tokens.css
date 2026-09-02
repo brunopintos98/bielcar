@@ -122,6 +122,17 @@
   --dur:  220ms;
   --dur-drawer: 400ms; /* nav mobile: más lento que --dur a propósito */
 
+  /* Reveal on scroll — DESIGN.md §4 (enmienda). Intensidad contenida a
+     propósito: fade + 20px, 560ms, stagger 70ms. Reusa `--ease` de arriba,
+     no una curva nueva. `--reveal-shift-x` es el desplazamiento en X de las
+     variantes `data-reveal="left"` / `"right"` (botones y splits que entran
+     desde el costado) — mismo espíritu contenido que el shift vertical, un
+     poco más grande porque el eje X se percibe menos si es chico. */
+  --dur-reveal:      560ms;
+  --reveal-shift:    20px;
+  --reveal-shift-x:  32px;
+  --reveal-step:     70ms;
+
   /* ----------------------------------------------------------------- mapa */
   /* Tema oscuro del embed de Google Maps.
      Google no ofrece tema oscuro en el iframe sin API key, así que se invierte

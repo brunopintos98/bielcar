@@ -30,8 +30,21 @@ const { title, lede } = Astro.props;
     padding: 88px 0 var(--space-16);
   }
 
+  /* On-load, NO on-scroll — mismo criterio que HomeHero (§4): el hero de
+     página interna también está sobre el fold. Stagger h1 → lede, 80ms de
+     paso, 12px de shift, consistente con el hero del home. */
+  .page-hero h1 {
+    animation: page-hero-in var(--dur-reveal) var(--ease) both;
+  }
+
+  @keyframes page-hero-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
   .page-hero__lede {
     margin-top: var(--space-6);
+    animation: page-hero-in var(--dur-reveal) var(--ease) 80ms both;
   }
 
   @media (max-width: 899px) {

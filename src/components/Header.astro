@@ -98,6 +98,22 @@ const path = cleanPath(Astro.url.pathname);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--rule-on-dark);
+    /* Microinteracción, no reveal: se condensa al pasar ~80px de scroll (ver
+       el script de más abajo). `height` y `border-bottom-color` nada más —
+       ningún `transform` acá, esto SÍ es ancestro de todo lo demás del sitio
+       pero nunca de `#MultiavisoWrapper` (Header y `<main>` son hermanos en
+       Base.astro), así que no hay riesgo de containing block para la hoja
+       de filtros; igual se evita `transform` por disciplina. */
+    transition:
+      height var(--dur) var(--ease),
+      border-bottom-color var(--dur) var(--ease);
+  }
+
+  /* 72px → 60px en desktop (en mobile `--header-h` ya es 60px, así que acá
+     no cambia nada visible — el breakpoint no hace falta). */
+  .header--condensed {
+    height: 60px;
+    border-bottom-color: var(--rule-strong);
   }
 
   /* Encima del drawer (600) solo mientras el menú está abierto. Si subiera
@@ -382,4 +398,30 @@ const path = cleanPath(Astro.url.pathname);
   window.addEventListener('resize', () => {
     if (window.innerWidth >= 900 && isOpen()) setOpen(false, { restoreFocus: false });
   });
+
+  /* Condensa el header al pasar ~80px de scroll. Microinteracción aprobada,
+     no reveal: no depende de `.js-reveal` ni del observer de `Base.astro`,
+     corre siempre. rAF-throttled para no ensuciar el scroll con trabajo de
+     layout en cada evento. */
+  const CONDENSE_AT = 80;
+  let condenseTicking = false;
+
+  function syncCondensed(): void {
+    header?.classList.toggle('header--condensed', window.scrollY > CONDENSE_AT);
+    condenseTicking = false;
+  }
+
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (condenseTicking) return;
+      condenseTicking = true;
+      requestAnimationFrame(syncCondensed);
+    },
+    { passive: true }
+  );
+
+  /* Estado inicial: si la página carga ya scrolleada (anchor, bfcache),
+     el header tiene que arrancar condensado y no esperar al próximo scroll. */
+  syncCondensed();
 </script>

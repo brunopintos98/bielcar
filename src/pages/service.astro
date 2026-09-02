@@ -101,15 +101,15 @@ const tallerWa = waLink('Hola, quiero hacer una consulta por service.', 'service
 
   <section class="incluye band band--raised">
     <div class="container">
-      <div class="incluye__head">
+      <div class="incluye__head" data-reveal>
         <p class="eyebrow">Qué incluye</p>
         <h2 class="h2 incluye__title">Todos los servicios del taller.</h2>
       </div>
 
       <ul class="incluye__grid">
         {
-          taller.map((item) => (
-            <li class="item">
+          taller.map((item, i) => (
+            <li class="item" data-reveal style={`--i: ${i}`}>
               <Icon name={item.icon} size={40} class="item__icon" />
               <h3 class="item__title">{item.title}</h3>
               <p class="item__line">{item.line}</p>
@@ -118,7 +118,7 @@ const tallerWa = waLink('Hola, quiero hacer una consulta por service.', 'service
         }
       </ul>
 
-      <div class="plan">
+      <div class="plan" data-reveal>
         <h3 class="h3 plan__title">Mantenimiento programado</h3>
         <p class="plan__lede">{SERVICE_OFFICIAL_NOTE}</p>
 
@@ -200,6 +200,8 @@ const tallerWa = waLink('Hola, quiero hacer una consulta por service.', 'service
     list-style: none;
     margin: var(--space-16) 0 0;
     padding: 0;
+    /* DESIGN §4: stagger 60ms, igual que ServiceBrands. */
+    --reveal-step: 60ms;
   }
 
   /* Sobre banda oscura el ícono va en --brand-bright y no en --brand: §2.2 da

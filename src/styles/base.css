@@ -212,8 +212,120 @@ p, ul, ol, figure, blockquote {
 
 /* ---------------------------------------------------------- movimiento --- */
 
-/* §4: sin reveal on scroll. Animaciones permitidas: hover de card, slide
-   del drawer mobile, morph de la hamburguesa, hoja de filtros, press :active. */
+/* §4 (enmendado): SÍ hay reveal on scroll, opt-in por atributo — nunca una
+   regla global tipo `section { opacity: 0 }`. El markup del plugin de
+   Multiaviso heredaría esa regla igual que heredaría el preflight de
+   Tailwind (la razón por la que el proyecto no usa Tailwind), así que acá
+   NO se toca nada dentro de `#MultiavisoContainer` / `#MultiavisoWrapper`:
+   ni el plugin ni `MultiavisoCatalog.astro` llevan `data-reveal`.
+
+   ─── Fail-safe obligatorio ────────────────────────────────────────────
+   La ocultación inicial (`opacity: 0`) solo se activa bajo `html.js-reveal`.
+   Esa clase la agrega UN script inline en `<head>` (`Base.astro`) y nada
+   más. Si el JS no corre —bloqueado, error, crawler— la clase nunca
+   aparece, esta regla nunca hace `opacity: 0`, y el contenido se ve desde
+   el primer render. Sitio estático que vive del SEO: esto no es opcional.
+
+   El observer (también en `Base.astro`, uno solo para todo el sitio) le
+   agrega `.is-revealed` a cada nodo cuando entra en viewport y deja de
+   observarlo — nunca re-anima.
+
+   ─── El atributo ────────────────────────────────────────────────────────
+   `data-reveal`            fade + `translateY(--reveal-shift)`, el default.
+   `data-reveal="left"`     fade + `translateX(-1 * --reveal-shift-x)`.
+   `data-reveal="right"`    fade + `translateX(--reveal-shift-x)`.
+   `data-reveal="fade"`     solo opacidad, sin desplazamiento — mapas e
+                            iframes: uno moviéndose se ve barato.
+   `data-reveal="group"`    no se anima a sí mismo, pero el observer lo
+                            sigue vigilando y le agrega `.is-revealed`
+                            igual — para que selectores propios de un
+                            componente animen a sus hijos en cascada sin
+                            que cada hijo necesite su propio atributo (ver
+                            `.reveal-fields` más abajo, y `ServiceForm`).
+
+   `--i` es el índice de stagger: `transition-delay = --reveal-step * --i`.
+   `--reveal-delay` pisa ese cálculo con un valor exacto cuando hace falta
+   uno que no es un múltiplo del paso (p. ej. el botón lateral de
+   `ServiceCta` / `PermutaBand`, a 120ms fijos).
+
+   ─── La regla que no se rompe ───────────────────────────────────────────
+   El `transform` va SIEMPRE en el elemento que se anima, nunca en un
+   ancestro de `#MultiavisoWrapper`: crearía containing block y desancla el
+   `position: fixed` de la hoja de filtros mobile (§8). Mismo motivo por el
+   que ningún wrapper de reveal lleva `will-change: transform` — el mismo
+   efecto colateral con otro nombre — ni `overflow: hidden` alrededor del
+   catálogo. Ninguno de los componentes que usan `data-reveal` es ancestro
+   del wrapper del plugin; si algún día alguno lo fuera, el `data-reveal`
+   va en el hijo, no en ese wrapper. */
+html.js-reveal [data-reveal] {
+  opacity: 0;
+  transform: translateY(var(--reveal-shift));
+  transition:
+    opacity var(--dur-reveal) var(--ease),
+    transform var(--dur-reveal) var(--ease);
+  transition-delay: var(--reveal-delay, calc(var(--reveal-step) * var(--i, 0)));
+}
+
+html.js-reveal [data-reveal='left'] {
+  transform: translateX(calc(-1 * var(--reveal-shift-x)));
+}
+
+html.js-reveal [data-reveal='right'] {
+  transform: translateX(var(--reveal-shift-x));
+}
+
+html.js-reveal [data-reveal='fade'] {
+  transform: none;
+}
+
+html.js-reveal [data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* "group": ver la nota de arriba. Va DESPUÉS de la regla genérica a
+   propósito — misma especificidad, gana por orden — para pisarle la
+   ocultación inicial. */
+html.js-reveal [data-reveal='group'] {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+/* Ayudante para el stagger "suave" de `ServiceForm` (§7): un solo
+   `data-reveal="group"` en `.sform__form` dispara el observer, y estos
+   selectores encadenan la entrada de cada campo y del submit sin que
+   `FormField` ni `WhatsAppForm` necesiten su propio atributo — son
+   compartidos con `/contacto`, que no lleva este tratamiento. Acoplado a
+   los 5 campos de `ServiceForm`; si otro formulario necesita este mismo
+   helper con otra cantidad de campos, se extiende acá, no se copia. */
+html.js-reveal .reveal-fields .field,
+html.js-reveal .reveal-fields .waform__submit {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--dur-reveal) var(--ease),
+    transform var(--dur-reveal) var(--ease);
+}
+
+html.js-reveal .reveal-fields.is-revealed .field,
+html.js-reveal .reveal-fields.is-revealed .waform__submit {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal-fields .waform__grid > .field:nth-child(1) { transition-delay: 0ms; }
+.reveal-fields .waform__grid > .field:nth-child(2) { transition-delay: 40ms; }
+.reveal-fields .waform__grid > .field:nth-child(3) { transition-delay: 80ms; }
+.reveal-fields .waform__grid > .field:nth-child(4) { transition-delay: 120ms; }
+.reveal-fields .waform__grid > .field:nth-child(5) { transition-delay: 160ms; }
+.reveal-fields .waform__submit { transition-delay: 200ms; }
+
+/* Animaciones permitidas por §4: hover de card, slide del drawer mobile,
+   morph de la hamburguesa, hoja de filtros, press :active, y ahora reveal
+   on scroll / on load. Transiciones de PÁGINA siguen prohibidas —
+   ClientRouter no se toca, ver `astro.config.mjs` y la nota de
+   `Base.astro`, es una regla distinta y no la afectó esta enmienda. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -224,7 +336,23 @@ p, ul, ol, figure, blockquote {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* Sin esto, un elemento con `--i` alto (o un `animation-delay` de
+       on-load como el de HomeHero) seguiría ESPERANDO ese delay aunque la
+       duración ya esté en 0.01ms — el contenido tardaría lo mismo en
+       aparecer, solo que de golpe en vez de animado. Con el delay también
+       en cero, todo lo que usa `data-reveal` o un keyframe on-load aparece
+       de entrada, sin parpadeo y sin la espera escalonada. */
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
+  }
+
+  html.js-reveal [data-reveal],
+  .reveal-fields .field,
+  .reveal-fields .waform__submit {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 }
