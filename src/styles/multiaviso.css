@@ -1695,6 +1695,16 @@
    el favicon a 68px y quedó corregida en la sesión previa; esta geometría de
    tres capas es la que reemplaza esa versión entera, no un ajuste sobre ella.
 
+   ─── FUENTE DE VERDAD DUPLICADA con public/favicon.svg ─────────────────────
+   Esta misma geometría (los seis radios y el path evenodd de arriba) vive
+   AHORA en dos archivos: este `mask`/`-webkit-mask` y `public/favicon.svg`
+   (favicon + fallback de `apple-touch-icon.png`/`favicon.png`, ver
+   `src/layouts/Base.astro`). El `d=` de la máscara de abajo es una copia
+   literal del `d=` de `favicon.svg` — si se toca la geometría acá, hay que
+   tocarla ahí también, y viceversa. Cuando llegue el vector oficial de
+   Sebastián (pendiente, ver README) se reemplazan los dos juntos, no uno
+   primero y el otro después.
+
    Colores: el usuario midió `#007fa3` (disco exterior/tuerca) y `#269cc0`
    (disco interno/anillo) sobre el favicon — prácticamente idénticos a
    `--brand` (#007F9E) y `--brand-bright` (#1F9CBF). Se usan los TOKENS, no

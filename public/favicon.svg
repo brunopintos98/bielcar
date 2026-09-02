@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  favicon.svg — engranaje de tres capas concéntricas de Bielcar.
+
+  FUENTE DE VERDAD DUPLICADA: esta geometría (viewBox 0 0 24 24, centro 12,12,
+  disco exterior r=12, disco interno r=7.84, engranaje 8 dientes tip=6.93/
+  valle=5.00, anillo central r=1.28/0.91) es LA MISMA que dibuja el loader del
+  catálogo en src/styles/multiaviso.css, sección "11. loader de carga" (el
+  mask / -webkit-mask de .catalog #MultiavisoContainer > .spinner::after).
+  El path d= de abajo es una copia literal de ese mismo d=. Si se toca la
+  geometría acá o allá, hay que tocar la otra también — no son dos dibujos
+  parecidos, son el mismo dato en dos archivos. Cuando llegue el vector oficial
+  de Sebastián (pendiente, ver README) se reemplazan los dos juntos.
+
+  Colores horneados (#007F9E / #1F9CBF = ‑‑brand / ‑‑brand‑bright de
+  tokens.css): un archivo en public/ no puede leer custom properties CSS.
+
+  ─── Por qué el engranaje no se lee en una pestaña de 16px (y no es un bug) ──
+  Medido downscale LANCZOS desde un render de 512px, delta del canal azul
+  sobre la fila central, comparando ESTE svg contra el favicon.png anterior
+  (68px, el que mandó el cliente):
+
+                        16px      32px
+    favicon.png (68px)  delta 27  delta 45
+    favicon.svg (este)  delta 21  delta 33
+
+  El SVG es marginalmente MÁS blando que el PNG anterior a los dos tamaños,
+  pero no es una regresión cualitativa: los dos se leen como "forma de
+  engranaje difusa" a 16px y los dos se leen con claridad a 32px — es el mismo
+  piso que ya existía, no uno peor. La causa NO es la geometría (los radios
+  son los mismos que ya estaban validados): es que el favicon.png original usa
+  #00a0cc en el disco interno (medido directo del PNG), más claro y saturado
+  que el token ‑‑brand‑bright (#1F9CBF, B=191 contra B=204 del original). Se
+  prioriza igual el token del sistema — así lo confirmó el usuario, que midió
+  #269cc0 sobre el favicon real, valor que coincide con el token y no con el
+  #00a0cc real del archivo — sobre ganar ~6 puntos de delta en un escenario
+  que ya era blando de por sí. El anillo central (r=1.28/0.91) NO se engrosó
+  para compensar: sería cambiar el canon para un beneficio marginal en el peor
+  caso, y ese caso ya era igual de blando antes de este cambio.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <circle cx="12" cy="12" r="12" fill="#007F9E"/>
+  <path fill="#1F9CBF" fill-rule="evenodd" d="M 19.840,12.000 A 7.84 7.84 0 1 1 4.160,12.000 A 7.84 7.84 0 1 1 19.840,12.000 Z M 10.372,7.272 L 11.036,5.137 L 12.964,5.137 L 13.628,7.272 A 5.000 5.000 0 0 1 14.192,7.506 L 16.171,6.465 L 17.535,7.829 L 16.494,9.808 A 5.000 5.000 0 0 1 16.728,10.372 L 18.863,11.036 L 18.863,12.964 L 16.728,13.628 A 5.000 5.000 0 0 1 16.494,14.192 L 17.535,16.171 L 16.171,17.535 L 14.192,16.494 A 5.000 5.000 0 0 1 13.628,16.728 L 12.964,18.863 L 11.036,18.863 L 10.372,16.728 A 5.000 5.000 0 0 1 9.808,16.494 L 7.829,17.535 L 6.465,16.171 L 7.506,14.192 A 5.000 5.000 0 0 1 7.272,13.628 L 5.137,12.964 L 5.137,11.036 L 7.272,10.372 A 5.000 5.000 0 0 1 7.506,9.808 L 6.465,7.829 L 7.829,6.465 L 9.808,7.506 A 5.000 5.000 0 0 1 10.372,7.272 Z M 13.280,12.000 A 1.28 1.28 0 1 1 10.720,12.000 A 1.28 1.28 0 1 1 13.280,12.000 Z M 12.910,12.000 A 0.91 0.91 0 1 1 11.090,12.000 A 0.91 0.91 0 1 1 12.910,12.000 Z"/>
+</svg>

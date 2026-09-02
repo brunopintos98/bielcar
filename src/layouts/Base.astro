@@ -144,7 +144,18 @@ const businessSchema = {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="icon" href="/favicon.png" type="image/png" />
+    {/* Orden deliberado: el PNG primero como fallback (navegadores viejos
+        que no entienden `type="image/svg+xml"` ignoran esa línea y se quedan
+        con esta), el SVG segundo — los navegadores modernos lo toman por ser
+        el último `rel="icon"` que sí soportan. `sizes="512x512"` en el PNG
+        porque ese es su tamaño real (un raster de resolución fija no es
+        "any"); `sizes="any"` en el SVG porque sí sirve cualquier resolución
+        al ser vectorial. Geometría y colores documentados en
+        public/favicon.svg — misma fuente que el loader del catálogo en
+        multiaviso.css §11, ver la nota cruzada ahí. */}
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="512x512" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="canonical" href={canonical} />
 
     {/* Open Graph — lo que se ve cuando alguien manda el link por WhatsApp,
@@ -165,7 +176,10 @@ const businessSchema = {
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={imageUrl} />
 
-    <meta name="theme-color" content="#0D0D0D" />
+    {/* --brand (#007F9E), no --surface-dark: DESIGN.md no fija un color
+        para el chrome del navegador (grep verificado, sin resultados), así
+        que no hay conflicto en alinear esto a la marca en vez del fondo. */}
+    <meta name="theme-color" content="#007F9E" />
 
     {/* Las fuentes no bloquean el render.
         Un <link rel="stylesheet"> normal a fonts.googleapis.com bloquea el
