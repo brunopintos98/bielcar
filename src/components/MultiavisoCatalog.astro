@@ -147,6 +147,7 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     const applyBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__apply');
     const clearBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__clear');
     const rail = sheet.querySelector<HTMLElement>('.ma-sheet__rail');
+    const catalog = container.closest<HTMLElement>('.catalog');
     let open = false;
     let activeCat: number | null = null;
     /* Cierre optimista: el observer lee `display !== none` y jQuery deja
@@ -156,6 +157,11 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     let closing = false;
     let wipeAll = false;
     const selections = new Map<number, Map<string, string> | null>();
+
+    const syncFilterCount = (): void => {
+      const n = document.querySelectorAll('#CurrentFilters .current-filter').length;
+      catalog?.style.setProperty('--ma-filter-count', n > 0 ? `" (${n})"` : '""');
+    };
 
     const isOpen = (): boolean => {
       if (!mq.matches) return false;
@@ -385,6 +391,7 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       requestAnimationFrame(() => {
         queued = false;
         apply();
+        syncFilterCount();
       });
     };
 

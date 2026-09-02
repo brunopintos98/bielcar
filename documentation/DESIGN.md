@@ -355,10 +355,9 @@ Verificada contra el HTML capturado de `bielcar.vercel.app/usados.html`:
         └── #ListContainer
             └── table#ListTable
                 ├── tr > td#Filters
-                │   ├── a#FiltersTitle          "Filtros y Orden"
+                │   ├── a#FiltersTitle          trigger mobile (el plugin dice "Filtros y Orden"; nosotros lo restilamos a "Filtros")
                 │   └── #FilterContent
                 │       ├── .filter-block > #Counts        "1 a 24 de 40 resultados"
-                │       ├── #CurrentFilters > .current-filter
                 │       ├── .filter-block#Sort
                 │       │   ├── #SortDisplay
                 │       │   └── #SortPopup > #SortPopupInner
@@ -367,6 +366,7 @@ Verificada contra el HTML capturado de `bielcar.vercel.app/usados.html`:
                 │           ├── a.filter-block-item[.hidden]
                 │           └── a.filter-block-more        "Más opciones"
                 ├── tr > td#List
+                │   ├── #CurrentFilters > .current-filter  chips de filtros aplicados (ocultos en mobile, §8)
                 │   └── div
                 │       ├── .item (xN)
                 │       │   ├── .item-image > a[style=background-image]
@@ -550,7 +550,7 @@ El carrusel de destacados de la home **queda vacío si Sebastián no marca vehí
 
 **El breakpoint de los filtros es 700, no 900.** No es una decisión nuestra: la hoja del plugin oculta `#FiltersTitle` globalmente, lo muestra en `max-width: 700px` y fuerza `#FilterContent { display: block !important }` en `min-width: 700px`. O sea que el cambio sidebar → acordeón ya ocurre en 700, y en desktop no hay nada que forzar. Una versión anterior de esta tabla decía 600–899 y llevó a duplicar las reglas del plugin en 900px con tres `!important`, sembrando una discrepancia entre 700 y 900. Los breakpoints de la grilla (400 / 600 / 699) también son suyos. La columna "Nav" sí es nuestra y sigue rompiendo en 899.
 
-Debajo de 700px los filtros **no** son el acordeón nativo del plugin: son una **hoja modal fija** sobre el resto del contenido — backdrop, riel de categorías, barra superior con título y ✕, y barra inferior sticky con "Limpiar filtros" + "Ver resultados". El patrón es el de Mercado Libre mobile.
+Debajo de 700px los filtros **no** son el acordeón nativo del plugin: son una **hoja modal fija** sobre el resto del contenido — backdrop, riel de categorías, barra superior con título y ✕, y barra inferior sticky con "Limpiar filtros" + "Ver resultados". El patrón es el de Mercado Libre mobile. El trigger de la hoja es compacto (`width: fit-content`): ícono de sliders, la palabra "Filtros" y el recuento de chips aplicados, p. ej. `Filtros (2)`. El texto nativo del plugin ("Filtros y Orden") se colapsa con `font-size: 0` y se vuelve a pintar por CSS; el recuento se inyecta como custom property en nuestro `.catalog`, no escribiendo el nodo del plugin. **`#CurrentFilters` (las pills debajo del trigger) se oculta en mobile:** el estado aplicado vive en la hoja. En desktop las pills siguen, porque ahí no hay drawer ni "Limpiar filtros" y el link de cada chip es la forma de sacar un filtro solo.
 
 La hoja mide **80svh y está anclada abajo**: el 20% de arriba deja ver el listado atenuado, para que se lea como una capa sobre los resultados y no como otra página. Sus superficies van en `--ma-bg-raised` (#171717), no en `--ma-bg`: sobre el backdrop al 60% el contenido atenuado queda casi del mismo negro que `--surface-dark` y el borde de la hoja desaparecía.
 

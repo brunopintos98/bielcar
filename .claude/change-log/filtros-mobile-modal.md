@@ -465,4 +465,25 @@ de confirmar.
 ### Verificación
 
 - `npm run check` / `npm run build` — locales
-- Comportamiento real: `npm run deploy` (plugin no renderiza en local)
+- Catálogo en producción: requiere `npm run deploy` (plugin no renderiza en local)
+
+### Approval token
+
+Pendiente revisión humana del diff en `src/styles/multiaviso.css` (review_required).
+
+## Session 13 — 2026-09-02
+
+Chips de `#CurrentFilters` ocultos en mobile (con el drawer no aportan) y
+trigger compacto estilo ML: fit-content, ícono, "Filtros", recuento `(N)`
+leído de los chips y pintado vía `--ma-filter-count` en nuestro `.catalog`.
+
+Desktop no se toca: ahí no hay hoja y el chip sigue siendo cómo se saca un
+filtro suelto.
+
+### Archivos
+
+| Archivo | Cambio |
+|---|---|
+| `src/styles/multiaviso.css` | `#CurrentFilters { display: none }` en ≤699px; `#FiltersTitle` fit-content + ::before ícono + ::after label. **review_required** |
+| `src/components/MultiavisoCatalog.astro` | `syncFilterCount()` |
+| `documentation/DESIGN.md` | §6.1 árbol (`#CurrentFilters` en `td#List`); §8 trigger compacto y chips ocultos. |
