@@ -193,12 +193,14 @@ Sin `box-shadow` en ningún componente estático. La única sombra permitida es 
 ```css
 --ease: cubic-bezier(0.2, 0, 0, 1);
 --dur:  220ms;
+--dur-drawer: 400ms;
 ```
 
 - Hover de card: `transform: scale(1.03)` sobre la imagen, dentro de un contenedor con `overflow: hidden`. La card no se mueve, solo la foto.
 - Hover de link de nav y de filtro: cambio de color a `--brand-bright`, sin subrayado animado.
+- Nav mobile: hamburguesa de dos líneas desiguales (abajo ~2/3, alineadas a la derecha). Morphan a cruz en `--dur`. El drawer entra desde la derecha (`translateX`) en `--dur-drawer`, más lento a propósito. No hay reveal on scroll ni otras transiciones de página.
 - Nada de reveal on scroll. En un sitio de catálogo agrega latencia percibida sin aportar.
-- Respetar `prefers-reduced-motion: reduce` desactivando el scale.
+- Respetar `prefers-reduced-motion: reduce` desactivando el scale de las cards y las transiciones del drawer / hamburguesa (el reset de `base.css` ya anula `transition-duration`).
 
 ---
 
@@ -208,7 +210,7 @@ Sin `box-shadow` en ningún componente estático. La única sombra permitida es 
 
 Sticky, `--surface-dark-raised` con `backdrop-filter: blur(8px)` y fondo a 85% de opacidad, altura 72px desktop / 60px mobile. Logo a la izquierda. En premiumcars el nav está partido en dos grupos (catálogo a la izquierda, institucional a la derecha); para Bielcar conviene un solo grupo alineado a la derecha porque hay menos items.
 
-Item activo en `--brand-bright`. Hover en blanco. Mobile: hamburguesa a drawer full-screen sobre `--surface-dark`.
+Item activo en `--brand-bright`. Hover en blanco. Mobile: hamburguesa de dos líneas desiguales, ancladas a la derecha (la de abajo más corta). Al abrir, el mismo botón morpha a cruz y el drawer entra desde la derecha (`translateX(100%) → 0`, `--dur-drawer`) sobre un overlay `--surface-dark` semitransparente con `backdrop-filter`. El header permanece visible y por encima del drawer; skip-link, main, footer y FAB quedan `inert`. No hay botón de cierre duplicado.
 
 ### 5.2 Hero de página interna
 

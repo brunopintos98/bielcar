@@ -1,5 +1,4 @@
 ---
-import Icon from './Icon.astro';
 import { cleanPath, LOGO, site, ROUTES } from '../data/site';
 
 /**
@@ -12,6 +11,11 @@ import { cleanPath, LOGO, site, ROUTES } from '../data/site';
  * variante `onDark` derivada del PNG que mandó Sebastián (ver LOGO en site.ts).
  * Sigue siendo un bitmap de 254px de ancho — a 32px de alto da ~2.2x de
  * densidad, que alcanza. El vector sigue pedido para cuando haya que escalarlo.
+ *
+ * Mobile: hamburguesa de dos barras (no el glifo Lucide de tres, que no se
+ * puede morphar). El mismo botón abre y cierra; las barras rotan a cruz. El
+ * drawer entra desde la derecha. El header se queda encima y no se marca
+ * `inert` — si se inertara, el botón dejaría de responder.
  */
 /**
  * Los ítems salen de ROUTES (site.ts), que es también de donde sale el
@@ -56,24 +60,15 @@ const path = cleanPath(Astro.url.pathname);
     </nav>
 
     <button class="burger" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="drawer">
-      <Icon name="menu" size={24} />
+      <span class="burger__icon" aria-hidden="true">
+        <span class="burger__bar"></span>
+        <span class="burger__bar"></span>
+      </span>
     </button>
   </div>
 </header>
 
-<div class="drawer" id="drawer" hidden>
-  <div class="drawer__head">
-    <img
-      class="logo__img"
-      src={LOGO.onDark}
-      alt={site.name}
-      width={LOGO.width}
-      height={LOGO.height}
-    />
-    <button class="burger" type="button" data-close aria-label="Cerrar menú">
-      <Icon name="x" size={24} />
-    </button>
-  </div>
+<div class="drawer" id="drawer" hidden inert>
   <nav aria-label="Navegación principal (móvil)">
     <ul class="drawer__list">
       {
@@ -103,6 +98,12 @@ const path = cleanPath(Astro.url.pathname);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--rule-on-dark);
+  }
+
+  /* Encima del drawer (600) solo mientras el menú está abierto. Si subiera
+     siempre, taparía la hoja de filtros (550), que §6 asume cubre el header. */
+  .header--menu-open {
+    z-index: calc(var(--z-drawer) + 1);
   }
 
   .header__inner {
@@ -167,6 +168,49 @@ const path = cleanPath(Astro.url.pathname);
     border: 0;
     color: var(--text-on-dark);
     cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  /* Dos barras desiguales, ancladas a la derecha. Caja 22×6: trazo 2px y
+     hueco 2px (el hueco es un trazo). Abajo = 14px ≈ 64% de la de arriba. */
+  .burger__icon {
+    position: relative;
+    display: block;
+    width: 22px;
+    height: 6px;
+  }
+
+  .burger__bar {
+    position: absolute;
+    right: 0;
+    height: 2px;
+    background: currentColor;
+    transform-origin: center;
+    transition:
+      transform var(--dur) var(--ease),
+      width var(--dur) var(--ease);
+  }
+
+  .burger__bar:first-child {
+    top: 0;
+    width: 22px;
+  }
+
+  .burger__bar:last-child {
+    bottom: 0;
+    width: 14px;
+  }
+
+  /* Centros: 1px y 5px. Punto medio: 3px. Cada una recorre 2px.
+     La de abajo se estira a 22px (crece hacia la izquierda, `right: 0`)
+     para que la cruz quede simétrica. */
+  .burger[aria-expanded='true'] .burger__bar:first-child {
+    transform: translateY(2px) rotate(45deg);
+  }
+
+  .burger[aria-expanded='true'] .burger__bar:last-child {
+    width: 22px;
+    transform: translateY(-2px) rotate(-45deg);
   }
 
   /* ------------------------------------------------------------- drawer */
@@ -175,26 +219,22 @@ const path = cleanPath(Astro.url.pathname);
     position: fixed;
     inset: 0;
     z-index: var(--z-drawer);
-    background: var(--surface-dark);
+    background: color-mix(in srgb, var(--surface-dark) 88%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     padding: var(--gutter);
+    padding-top: calc(var(--header-h) + var(--space-8));
     overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform var(--dur-drawer) var(--ease);
+  }
+
+  .drawer.is-open {
+    transform: translateX(0);
   }
 
   .drawer[hidden] {
     display: none;
-  }
-
-  .drawer__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: var(--header-h);
-    margin-bottom: var(--space-8);
-  }
-
-  .drawer__head .burger {
-    display: block;
-    margin-left: 0;
   }
 
   .drawer__list {
@@ -234,43 +274,101 @@ const path = cleanPath(Astro.url.pathname);
 
 <script>
   const drawer = document.getElementById('drawer');
+  const header = document.querySelector<HTMLElement>('.header');
   const openBtn = document.querySelector<HTMLButtonElement>('.header .burger');
-  const closeBtn = document.querySelector<HTMLButtonElement>('[data-close]');
 
-  function setOpen(open: boolean) {
-    if (!drawer) return;
-    drawer.hidden = !open;
-    document.body.style.overflow = open ? 'hidden' : '';
-    openBtn?.setAttribute('aria-expanded', String(open));
+  let hideTimer: number | undefined;
 
-    /* Contención de foco. El drawer es full-screen y tapa todo, pero eso es
-       solo pintura: sin `inert`, el tabulador sigue recorriendo el header, el
-       contenido y el footer que están debajo, y el anillo de foco desaparece
-       de la pantalla mientras la persona sigue tabulando a ciegas.
+  function reduceMotion(): boolean {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
 
-       Se marca todo lo que es hermano del drawer y no el drawer. El orden
-       importa: al cerrar se saca `inert` ANTES de devolver el foco al botón,
-       que vive dentro del <header> que estaba inerte. */
+  /* El fallback tiene que vivir DESPUÉS de `--dur-drawer`, no de un 300ms
+     cableado: si el token sube, un timeout corto tapa el slide a mitad. */
+  function drawerHideDelay(): number {
+    if (!drawer) return 500;
+    const raw = getComputedStyle(drawer).transitionDuration.split(',')[0]?.trim() ?? '';
+    const ms = raw.endsWith('ms') ? parseFloat(raw) : parseFloat(raw) * 1000;
+    return (Number.isFinite(ms) ? ms : 400) + 80;
+  }
+
+  function isOpen(): boolean {
+    return openBtn?.getAttribute('aria-expanded') === 'true';
+  }
+
+  function setSiblingsInert(open: boolean) {
     Array.from(document.body.children).forEach((el) => {
-      if (el === drawer) return;
+      if (el === drawer || el === header) return;
       if (open) {
         el.setAttribute('inert', '');
       } else {
         el.removeAttribute('inert');
       }
     });
+  }
+
+  function hideDrawer() {
+    if (!drawer) return;
+    drawer.hidden = true;
+    hideTimer = undefined;
+  }
+
+  function setOpen(open: boolean, opts: { restoreFocus?: boolean } = {}) {
+    if (!drawer || !openBtn || !header) return;
+
+    if (hideTimer !== undefined) {
+      window.clearTimeout(hideTimer);
+      hideTimer = undefined;
+    }
+
+    openBtn.setAttribute('aria-expanded', String(open));
+    openBtn.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    header.classList.toggle('header--menu-open', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+    setSiblingsInert(open);
 
     if (open) {
-      closeBtn?.focus();
+      drawer.hidden = false;
+      drawer.removeAttribute('inert');
+      const reveal = () => drawer.classList.add('is-open');
+      if (reduceMotion()) {
+        reveal();
+      } else {
+        requestAnimationFrame(() => requestAnimationFrame(reveal));
+      }
+      drawer.querySelector<HTMLAnchorElement>('a')?.focus();
     } else {
-      openBtn?.focus();
+      drawer.classList.remove('is-open');
+      drawer.setAttribute('inert', '');
+      if (reduceMotion()) {
+        hideDrawer();
+      } else {
+        const onEnd = (e: TransitionEvent) => {
+          if (e.propertyName !== 'transform') return;
+          drawer.removeEventListener('transitionend', onEnd);
+          hideDrawer();
+        };
+        drawer.addEventListener('transitionend', onEnd);
+        hideTimer = window.setTimeout(() => {
+          drawer.removeEventListener('transitionend', onEnd);
+          hideDrawer();
+        }, drawerHideDelay());
+      }
+      if (opts.restoreFocus !== false) openBtn.focus();
     }
   }
 
-  openBtn?.addEventListener('click', () => setOpen(true));
-  closeBtn?.addEventListener('click', () => setOpen(false));
+  openBtn?.addEventListener('click', () => setOpen(!isOpen()));
+
+  drawer?.addEventListener('click', (e) => {
+    if (e.target === drawer) setOpen(false);
+  });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && drawer && !drawer.hidden) setOpen(false);
+    if (e.key === 'Escape' && isOpen()) setOpen(false);
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 900 && isOpen()) setOpen(false, { restoreFocus: false });
   });
 </script>

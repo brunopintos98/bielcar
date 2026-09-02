@@ -2419,3 +2419,117 @@ Fix: `position: absolute; inset: 0` en `.tile__img`. Saca el alto de la ecuació
   (17.5 CSS px) entre el borde y la foto. Después del fix, esa banda no existe: el borde
   de 1px (gris 37 = `rgba(255,255,255,.10)` sobre `#0D0D0D`) pasa directo a la foto.
 - `/nosotros` auditado por el mismo patrón: sano, la imagen llena exacto.
+
+---
+
+## Session 31 — web-feature on `site` (started 2026-09-02T17:31:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-02T17:31:00Z
+session_ended_utc: 2026-09-02T17:38:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/components/Header.astro
+  - documentation/DESIGN.md
+  - src/styles/base.css
+```
+
+### 1. Initial approved PLAN — 2026-09-02T17:31:00Z
+
+Drawer mobile: hamburguesa de 2 líneas que morpha a cruz; el panel entra desde
+la derecha; overlay oscuro semitransparente. El header se queda visible y el
+mismo botón cierra. Se enmienda DESIGN.md §4 y §5.1 (el contrato prohibía esta
+animación) y el comentario de movimiento en `base.css`.
+
+**Archivos:** `src/components/Header.astro`, `documentation/DESIGN.md`, `src/styles/base.css`.
+
+**Alternativa más fuerte considerada.** Dejar el drawer opaco full-screen y solo
+morphar el ícono: es menos código, pero no es un drawer que entra de derecha a
+izquierda ni deja ver la página detrás.
+
+**Supuesto que sostiene el enfoque.** El header puede quedar por encima del
+drawer (`z-index`) y seguir clickeable; si no, el morph y el tap de cierre no
+pueden vivir en el mismo botón.
+
+**Qué lo falsificaría.** Que en mobile el header quede tapado o el FAB siga
+recibiendo toques con el menú abierto.
+
+**Approval token:** "proceed"
+
+### 2. Implementation adjustment — 2026-09-02T17:33:00Z
+
+`setOpen(false)` ya no restaura el foco si el cierre viene de un resize a
+desktop (`restoreFocus: false`). El botón hamburguesa es `display: none` a
+partir de 900px; devolverle el foco ahí dejaría el anillo en un control
+invisible.
+
+**No re-approval (in scope):** el plan ya cerraba el menú al pasar a desktop;
+esto solo evita un efecto secundario de ese cierre.
+
+**What this teaches:** un control que existe en el DOM pero está oculto por
+breakpoint no es un destino seguro de `focus()`.
+
+### 3. Verification — 2026-09-02T17:38:00Z
+
+- `npm run check`: 36 archivos, 0 errores (1 hint preexistente en `site.ts`)
+- Chrome headless a 393px:
+  - cerrado: 2 barras, `transform: none`, drawer `hidden`+`inert`, header z=400
+  - abierto: barras `rotate(45deg)` / `rotate(-45deg)`, drawer `translateX(0)`,
+    header z=601, `main` y FAB `inert`, header no inerte, foco en el primer link
+  - re-cerrado: estado inicial restaurado, foco en el burger
+- Chrome headless a 1400px: burger `display: none`, drawer oculto
+- Screenshots en `/tmp/bielcar-menu/{closed,open}-393.png` coinciden con el
+  morph a cruz y el overlay semitransparente
+
+---
+
+## Session 32 — web-feature on `site` (started 2026-09-02T17:36:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-02T17:36:00Z
+session_ended_utc: 2026-09-02T17:40:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/components/Header.astro
+  - src/styles/tokens.css
+  - documentation/DESIGN.md
+```
+
+### 1. Initial approved PLAN — 2026-09-02T17:36:00Z
+
+Refinamiento visual del burger (captura "tal cual": dos barras desiguales,
+right-aligned, hueco = trazo) y drawer más lento vía token propio
+`--dur-drawer: 400ms`, sin tocar `--dur`. Timeout de cierre derivado del
+computed style. DESIGN.md §4 / §5.1 enmendados.
+
+**Archivos:** `src/components/Header.astro`, `src/styles/tokens.css`,
+`documentation/DESIGN.md`.
+
+**Alternativa más fuerte considerada.** Subir `--dur` global: un cambio, pero
+ralentiza hover de cards y color de nav, que no se pidió.
+
+**Supuesto que sostiene el enfoque.** 400ms se lee como "un poco más lento"
+respecto de 220ms sin volverse latencia percibida en un catálogo.
+
+**Qué lo falsificaría.** Que el morph deje una cruz asimétrica porque la barra
+corta rota sobre su propio centro sin estirarse.
+
+**Approval token:** follow-up "tal cual" + "un poco más lento" sobre Session 31.
+
+### 2. Verification — 2026-09-02T17:40:00Z
+
+- `npm run check`: 36 archivos, 0 errores
+- Chrome headless 393px @3x:
+  - cerrado: top 22×2, bottom 14×2, right edges coinciden (369px), gap 2px
+  - `transition-duration` del drawer: `0.4s`
+  - a ~80ms del click el drawer todavía está en `translateX(233px)` — el slide
+    ya no termina en un frame
+  - abierto: ambas barras `width: 22px`, rotate ±45°, cruz simétrica
+
+

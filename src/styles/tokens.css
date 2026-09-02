@@ -106,6 +106,7 @@
   /* ----------------------------------------------------------- movimiento */
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --dur:  220ms;
+  --dur-drawer: 400ms; /* nav mobile: más lento que --dur a propósito */
 
   /* ----------------------------------------------------------------- mapa */
   /* Tema oscuro del embed de Google Maps.
