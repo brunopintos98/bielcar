@@ -65,11 +65,23 @@ const href = isService
     background: var(--whatsapp);
     color: #fff;
     box-shadow: var(--shadow-fab);
-    transition: background-color var(--dur) var(--ease);
+    transition:
+      background-color var(--dur) var(--ease),
+      transform var(--dur) var(--ease);
   }
 
   .fab:hover {
     background: var(--whatsapp-hover);
+  }
+
+  .fab:active:not(.fab--missing) {
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fab:active:not(.fab--missing) {
+      transform: none;
+    }
   }
 
   .fab--missing {

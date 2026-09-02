@@ -63,7 +63,18 @@ const target = external ? '_blank' : undefined;
     transition:
       background-color var(--dur) var(--ease),
       border-color var(--dur) var(--ease),
-      color var(--dur) var(--ease);
+      color var(--dur) var(--ease),
+      transform var(--dur) var(--ease);
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn:active {
+      transform: none;
+    }
   }
 
   /* Acción: la única variante sólida del sistema. Siempre WhatsApp. */

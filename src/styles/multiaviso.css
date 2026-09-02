@@ -791,10 +791,13 @@
 
   /* ─── Nuestro chrome ─────────────────────────────────────────────────── */
 
-  /* La clase la pone nuestro script en <html> cuando detecta que el panel quedó
-     visible. El estado NO se lee del string del estilo inline sino de
-     `getComputedStyle`, así funciona sea cual sea el mecanismo del plugin. */
-  .ma-filters-open .ma-sheet {
+  /* Siempre en el árbol en mobile: los hijos son `position: fixed` y el
+     wrapper no pinta nada. `display: none` hasta que exista `.ma-filters-open`
+     impediría el slide de salida y el de entrada (display no anima). La
+     visibilidad la gobiernan opacity / transform / pointer-events en cada
+     hijo. Especificidad `.catalog .ma-sheet` para ganarle al `display: none`
+     global que está DESPUÉS de este media query. */
+  .catalog .ma-sheet {
     display: block;
   }
 
@@ -812,6 +815,18 @@
     padding: 0;
     background: rgb(0 0 0 / 0.6);
     cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+      opacity var(--dur-drawer) var(--ease),
+      visibility var(--dur-drawer) var(--ease);
+  }
+
+  .ma-filters-open .ma-sheet__backdrop {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
   }
 
   /* El fondo de la hoja NO puede vivir en `#FilterContent`: ese es el
@@ -821,9 +836,30 @@
      nunca. Cubre también el área de las barras: no importa, ellas van encima
      y opacas.
 
-     Tampoco lleva `pointer-events: none`: queda enteramente tapada por el
-     panel y las barras, y si algún tap llegara igual, que no haga nada es
-     mejor que que se cuele al backdrop y cierre la hoja de más. */
+     Tampoco lleva `pointer-events: none` cuando está ABIERTA: queda enteramente
+     tapada por el panel y las barras, y si algún tap llegara igual, que no
+     haga nada es mejor que que se cuele al backdrop y cierre la hoja de más.
+
+     El `transform` va en CADA hijo fijo, nunca en `.ma-sheet`: un transform
+     en el wrapper lo convertiría en containing block y las cuatro cajas
+     `position: fixed` dejarían de anclarse al viewport. `translateY` usa
+     `--ma-sheet-h` (no `100%`): `100%` es el alto de CADA caja, y head/foot
+     miden 56/72px — se quedarían a mitad de pantalla. */
+  .ma-sheet__surface,
+  .ma-sheet__head,
+  .ma-sheet__foot {
+    transform: translateY(var(--ma-sheet-h));
+    pointer-events: none;
+    transition: transform var(--dur-drawer) var(--ease);
+  }
+
+  .ma-filters-open .ma-sheet__surface,
+  .ma-filters-open .ma-sheet__head,
+  .ma-filters-open .ma-sheet__foot {
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
   .ma-sheet__surface {
     position: fixed;
     right: 0;
@@ -889,6 +925,11 @@
     background: none;
     color: var(--ma-text);
     cursor: pointer;
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .ma-sheet__close:active {
+    transform: scale(0.97);
   }
 
   .ma-sheet__apply {
@@ -907,6 +948,18 @@
     letter-spacing: var(--tracking-button);
     font-weight: 500;
     cursor: pointer;
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .ma-sheet__apply:active {
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ma-sheet__close:active,
+    .ma-sheet__apply:active {
+      transform: none;
+    }
   }
 }
 

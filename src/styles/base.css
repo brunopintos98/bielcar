@@ -213,7 +213,7 @@ p, ul, ol, figure, blockquote {
 /* ---------------------------------------------------------- movimiento --- */
 
 /* §4: sin reveal on scroll. Animaciones permitidas: hover de card, slide
-   del drawer mobile y morph de la hamburguesa a cruz. */
+   del drawer mobile, morph de la hamburguesa, hoja de filtros, press :active. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

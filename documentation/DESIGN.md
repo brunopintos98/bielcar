@@ -198,9 +198,11 @@ Sin `box-shadow` en ningún componente estático. La única sombra permitida es 
 
 - Hover de card: `transform: scale(1.03)` sobre la imagen, dentro de un contenedor con `overflow: hidden`. La card no se mueve, solo la foto.
 - Hover de link de nav y de filtro: cambio de color a `--brand-bright`, sin subrayado animado.
-- Nav mobile: hamburguesa de dos líneas desiguales (abajo ~2/3, alineadas a la derecha). Morphan a cruz en `--dur`. El drawer entra desde la derecha (`translateX`) en `--dur-drawer`, más lento a propósito. No hay reveal on scroll ni otras transiciones de página.
-- Nada de reveal on scroll. En un sitio de catálogo agrega latencia percibida sin aportar.
-- Respetar `prefers-reduced-motion: reduce` desactivando el scale de las cards y las transiciones del drawer / hamburguesa (el reset de `base.css` ya anula `transition-duration`).
+- Nav mobile: hamburguesa de dos líneas desiguales (abajo ~2/3, alineadas a la derecha). Morphan a cruz en `--dur`. El drawer entra desde la derecha (`translateX`) en `--dur-drawer`, más lento a propósito.
+- Hoja de filtros mobile: el chrome (backdrop, superficie, barras) entra en `--dur-drawer`. Backdrop en fade; superficie y barras en `translateY(--ma-sheet-h)` desde abajo. **No** se aplica `transform` al wrapper `.ma-sheet` ni a ningún ancestro de `#MultiavisoWrapper` — eso crearía containing block y desanclaría el `position: fixed` del panel. `#FilterContent` sigue creciendo con la animación de `height` de jQuery.
+- Press: `:active { transform: scale(0.97) }` en botones, FAB y hamburguesa. Con `prefers-reduced-motion: reduce` el scale no se aplica.
+- Nada de reveal on scroll ni transiciones de página. En un sitio de catálogo agrega latencia percibida sin aportar.
+- Respetar `prefers-reduced-motion: reduce` desactivando el scale de las cards, el press, y las transiciones del drawer / hamburguesa / hoja de filtros (el reset de `base.css` ya anula `transition-duration`).
 
 ---
 
@@ -559,7 +561,7 @@ Cómo se implementa, porque acota lo que se puede pedir después:
 - **El toggle sigue siendo del plugin.** `#FiltersTitle` es su trigger y `#FilterContent` se abre con el `display: block` inline que escribe jQuery. Nosotros solo reposicionamos el panel con `position: fixed` (no hay containing block en la cadena, y por ser `fixed` escapa el `overflow: auto` de `#ListWrapper`).
 - **Un solo `!important`, y es el caso que la regla lo reserva:** `overflow-y: auto !important` en `#FilterContent`. jQuery deja `overflow: hidden` INLINE después de animar, y sin eso el contenido no scrollea y los últimos bloques de filtro quedan cortados. Solo el eje Y.
 - **El fondo de la hoja es una capa aparte** (`.ma-sheet__surface`), fija y del alto exacto de la hoja. No puede vivir en `#FilterContent`: ese es el contenedor que scrollea, y en el rebote de iOS su background se pinta junto con el contenido, así que al pasarse del final aparecía el listado de atrás. Por lo mismo la hoja no lleva `-webkit-overflow-scrolling: touch` (obsoleto desde iOS 13, y era el disparador).
-- **El alto va por `height`, no por `top` + `bottom`.** Además de evitar restar de `100svh`, aprovecha que jQuery anima `height` inline: con la caja anclada por `bottom`, la animación del plugin se lee como una hoja que sube desde el borde inferior, sin escribir una sola transición nuestra.
+- **El alto va por `height`, no por `top` + `bottom`.** Además de evitar restar de `100svh`, aprovecha que jQuery anima `height` inline: con la caja anclada por `bottom`, la animación del plugin se lee como una hoja que sube desde el borde inferior. El chrome nuestro (backdrop, superficie, head, foot) entra en paralelo, `--dur-drawer` (400ms, el default de `slideToggle` de jQuery): fade el backdrop, `translateY` las tres cajas fijas. El `transform` va en cada hijo, nunca en `.ma-sheet` ni en un ancestro de `#MultiavisoWrapper`.
 - **El chrome es markup nuestro**, en `MultiavisoCatalog.astro`, fuera de `#MultiavisoContainer`. Cerrar despacha un click sobre `#FiltersTitle`: no se escribe en el DOM del plugin.
 - **Cada filtro es un link que recarga la página**, así que no hay "aplicar al final". La hoja queda cerrada después de la recarga y "Ver resultados" es, en la práctica, el botón de cerrar.
 - **No hay columna lateral de categorías** como en ML: exigiría rearmar el DOM del plugin en secciones navegables, que es exactamente lo que §6.2 prohíbe.

@@ -2532,4 +2532,62 @@ corta rota sobre su propio centro sin estirarse.
     ya no termina en un frame
   - abierto: ambas barras `width: 22px`, rotate ±45°, cruz simétrica
 
+---
+
+## Session 33 — web-feature on `site` (started 2026-09-02T17:51:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-02T17:51:00Z
+session_ended_utc: 2026-09-02T17:56:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/styles/multiaviso.css
+  - src/components/MultiavisoCatalog.astro
+  - src/components/Button.astro
+  - src/components/WhatsAppFab.astro
+  - src/components/Header.astro
+  - documentation/DESIGN.md
+  - src/styles/base.css
+```
+
+### 1. Initial approved PLAN — 2026-09-02T17:51:00Z
+
+Lote 1 del motion audit: hoja de filtros mobile (slide + fade del chrome,
+misma `--dur-drawer` que jQuery slideToggle) y press `scale(0.97)` en
+botones / FAB / hamburguesa. §4 y §8 enmendados. Cierre de la hoja es
+optimista: la clase se saca al tap, no cuando jQuery termina el slideUp.
+
+**Archivos:** `src/styles/multiaviso.css`, `src/components/MultiavisoCatalog.astro`,
+`src/components/Button.astro`, `src/components/WhatsAppFab.astro`,
+`src/components/Header.astro`, `documentation/DESIGN.md`, `src/styles/base.css`.
+
+**Alternativa más fuerte considerada.** Animar `#FilterContent` con nuestro
+`transform`: pelearía el `height` inline de jQuery y viola §6.2.
+
+**Supuesto que sostiene el enfoque.** Un `transform` en cada hijo fijo de
+`.ma-sheet` (nunca en el wrapper) mantiene el containing-block del viewport,
+así que `#FilterContent` sigue anclado.
+
+**Qué lo falsificaría.** Que al abrir, head/foot se queden a mitad de
+pantalla porque `translateY(100%)` usó el alto de cada barra y no el de la
+hoja — por eso el offset es `--ma-sheet-h`.
+
+**Approval token:** "proceed" sobre el lote filtros + press.
+
+### 2. Verification — 2026-09-02T17:56:00Z
+
+- `npm run check`: 36 archivos, 0 errores
+- Chrome headless 393px en `/nuevos` (chrome nuestro, sin plugin):
+  - cerrado: surface/head/foot `translateY(682px)` (= 80svh), backdrop opacity 0
+  - a 80ms: los tres a 405px, backdrop 0.41 — el slide está en curso
+  - abierto: translateY(0), opacity 1; screenshot de hoja 80% con head + "Ver resultados"
+  - cierre a 80ms: 277px / opacity 0.59; re-cerrado vuelve a 682 / 0
+- Reglas `:active { scale(0.97) }` presentes en CSSOM para burger y FAB
+- **Sin verificar en local:** interacción con el `slideToggle` de jQuery sobre
+  `#FilterContent` (el plugin no renderiza). Eso sale con `npm run deploy`.
+
+
 

@@ -169,6 +169,17 @@ const path = cleanPath(Astro.url.pathname);
     color: var(--text-on-dark);
     cursor: pointer;
     flex-shrink: 0;
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .burger:active {
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .burger:active {
+      transform: none;
+    }
   }
 
   /* Dos barras desiguales, ancladas a la derecha. Caja 22×6: trazo 2px y

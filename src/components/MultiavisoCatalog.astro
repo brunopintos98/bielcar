@@ -79,7 +79,7 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     molesta: el carrusel no renderiza `#FilterContent`, así que el script nunca
     llega a poner la clase que lo hace visible.
   */}
-  <div class="ma-sheet" data-ma-sheet>
+  <div class="ma-sheet" data-ma-sheet inert>
     <button class="ma-sheet__backdrop" type="button" data-ma-close aria-label="Cerrar filtros"
     ></button>
 
@@ -138,6 +138,11 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     const mq = window.matchMedia(MOBILE);
     const closeBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__close');
     let open = false;
+    /* Cierre optimista: el observer lee `display !== none` y jQuery deja
+       `display: block` durante todo el slideUp. Si esperáramos a `isOpen() ===
+       false`, el chrome se iría DESPUÉS de que el panel ya colapsó. Durante
+       `closing` se ignora un `isOpen()` true residual. */
+    let closing = false;
 
     /* El estado se lee de `getComputedStyle`, NO de `style.display` ni del
        string del atributo. El plugin usa dos mecanismos a la vez —clase
@@ -151,14 +156,19 @@ const { surface = 'dark', view = 'list' } = Astro.props;
 
     const apply = (): void => {
       const next = isOpen();
+      if (closing) {
+        if (!next) closing = false;
+        return;
+      }
       if (next === open) return;
       open = next;
 
       document.documentElement.classList.toggle('ma-filters-open', open);
-      /* Mismo lock de scroll que el drawer del Header. No se usa `inert` como
-         allá: ahí los hermanos del drawer son hijos de <body>, acá el panel
-         está enterrado en el árbol del plugin y marcar hermanos inertaría el
-         propio contenido de la hoja. */
+      sheet.toggleAttribute('inert', !open);
+      /* Mismo lock de scroll que el drawer del Header. No se usa `inert` en
+         los hermanos como allá: ahí los hermanos del drawer son hijos de
+         <body>, acá el panel está enterrado en el árbol del plugin y marcar
+         hermanos inertaría el propio contenido de la hoja. */
       document.body.style.overflow = open ? 'hidden' : '';
 
       if (open) closeBtn?.focus();
@@ -190,6 +200,12 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     mq.addEventListener('change', schedule);
 
     const close = (): void => {
+      if (!open || closing) return;
+      closing = true;
+      open = false;
+      document.documentElement.classList.remove('ma-filters-open');
+      sheet.setAttribute('inert', '');
+      document.body.style.overflow = '';
       document.getElementById('FiltersTitle')?.click();
     };
 
