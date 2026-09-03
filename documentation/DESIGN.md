@@ -41,6 +41,8 @@ Se toma el lenguaje de premiumcars, no su contenido.
 
   **Excepción explícita dentro de esta misma enmienda: `AccessTiles` (los 3 tiles de acceso del Home) queda en radio 0, a propósito.** Los tiles están pegados borde a borde sin gap —la separación es el borde de 1px de cada tile, no aire, y eso es una decisión ya documentada del propio componente (§1: "El bloque que reemplaza al 2x2")—. Redondear las 4 esquinas de cada tile dejaría, en cada divisor entre dos tiles, dos esquinas redondeadas enfrentadas sin gap real de por medio: el fondo se asoma en el medio como un rombo. Agregar gap para evitarlo rompería el patrón de "separación por borde" que el componente ya eligió. Se prefirió mantener esta única superficie en radio 0 antes que aceptar el artefacto o el gap. No es un olvido — es la única superficie de foto del sitio que quedó afuera del cambio de sistema, y esta nota es la que lo registra para que la próxima sesión no la lea como una inconsistencia sin explicar.
 
+  **Segunda enmienda, posterior a la de arriba: los heroes de pantalla completa dejan de llevar `--radius-md`.** HomeHero (portada de `/`) y PhotoHero (el hero con foto que comparten `/usados`, `/nuevos`, `/vehiculos`, `/service` y `/contacto`) son full-bleed a 100vw: el radio solo se veía en las dos esquinas inferiores, porque las de arriba quedan contra el header sticky. Un radio que solo existe en dos de cuatro esquinas no se lee como el sistema de 8px del resto de las superficies de foto, se lee como un recorte raro — así que el usuario pidió sacarlo entero en vez de dejarlo parcial. Esto deja DOS superficies de foto afuera del cambio de sistema, no una: `AccessTiles` (arriba) y ahora los heroes. La frase "es la única superficie de foto del sitio que quedó afuera del cambio de sistema" del párrafo anterior queda superada por este mismo cambio — se deja sin reescribir, mismo criterio que el resto del documento (ver la enmienda de arriba, que tampoco reescribe la línea original de "No se copia"), pero que quede constancia acá de que ya no es literalmente cierta.
+
 **El bloque que reemplaza al 2x2:** una grilla de 3 accesos (0km, Usados, Todos) con el mismo tratamiento de imagen full-bleed y label en la esquina inferior izquierda. Mismo patrón, contenido de Bielcar.
 
 ---
@@ -186,11 +188,11 @@ Muchos bloques van a **ancho de viewport completo** (héroes, tiles de imagen, f
 ```css
 --radius-none:  0;      /* cards de vehículo (fondo/borde, no la foto), inputs, AccessTiles (excepción, ver §1) */
 --radius-sm:    2px;    /* botones */
---radius-md:    8px;    /* imágenes: card de catálogo, carrusel de destacados, foto+miniaturas del detalle, heroes, foto de /nosotros */
+--radius-md:    8px;    /* imágenes: card de catálogo, carrusel de destacados, foto+miniaturas del detalle, foto de /nosotros */
 --radius-full:  9999px; /* solo FAB de WhatsApp y pills de filtro activo */
 ```
 
-**`--radius-md` es una enmienda, no parte de la redacción original de este documento** (ver §1, "No se copia"). Se introdujo cuando el usuario pidió redondear las imágenes del catálogo y del detalle de vehículo: en vez de tratarlo como excepción de esas dos páginas, se decidió como cambio de sistema — el token se aplica a toda superficie de foto del sitio (catálogo, carrusel, detalle, heroes, la foto de /nosotros), con la única excepción explícita de `AccessTiles` (ver §1). 8px es el más sutil de los valores considerados: pelea lo menos posible con el resto del sitio en radio 0.
+**`--radius-md` es una enmienda, no parte de la redacción original de este documento** (ver §1, "No se copia"). Se introdujo cuando el usuario pidió redondear las imágenes del catálogo y del detalle de vehículo: en vez de tratarlo como excepción de esas dos páginas, se decidió como cambio de sistema — el token se aplica a toda superficie de foto del sitio (catálogo, carrusel, detalle, la foto de /nosotros), con las excepciones explícitas de `AccessTiles` y de los heroes de pantalla completa —HomeHero y PhotoHero— (ver §1). 8px es el más sutil de los valores considerados: pelea lo menos posible con el resto del sitio en radio 0.
 
 Sin `box-shadow` en ningún componente estático. La única sombra permitida es la del FAB flotante, porque flota de verdad:
 `box-shadow: 0 4px 16px rgba(0,0,0,0.35)`.

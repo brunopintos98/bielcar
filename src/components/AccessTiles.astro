@@ -37,8 +37,8 @@ const tiles = [
   },
   {
     href: '/usados',
-    eyebrow: 'Usados',
-    title: 'Seleccionados',
+    eyebrow: 'Multimarca',
+    title: 'Usados',
     line: 'Revisados y listos para entregar.',
     icon: 'car' as const,
     photo: PHOTOS.tileUsados,
@@ -53,7 +53,7 @@ const tiles = [
   },
 ];
 
-const missing = tiles.filter((t) => !t.photo).map((t) => t.eyebrow);
+const missing = tiles.filter((t) => !t.photo).map((t) => t.title);
 
 /**
  * `sizes` del tile: arriba de 1250px son 3 columnas a ancho de viewport, o sea
@@ -274,9 +274,13 @@ const missing = tiles.filter((t) => !t.photo).map((t) => t.eyebrow);
     gap: var(--space-2);
   }
 
-  /* 0KM / USADOS / TODOS es la etiqueta que dice a qué listado entra el tile,
-     así que sube de --fs-eyebrow (13px) a --fs-body (16px). El título de abajo
-     queda en --fs-h3: es el nombre descriptivo, no la categoría. */
+  /* Ya no es uniforme "eyebrow = categoría, título = nombre descriptivo": el
+     tile del medio invirtió eso (título "Usados" = la categoría, eyebrow
+     "Multimarca" = un calificador). Lo que sí es uniforme en los tres es la
+     jerarquía tipográfica, y esa no cambia: el eyebrow sube de --fs-eyebrow
+     (13px) a --fs-body (16px) porque es la primera línea que se lee sobre la
+     foto y necesita peso; el título de abajo queda en --fs-h3, más grande
+     todavía, porque sigue siendo la palabra que más pesa del tile. */
   .tile__eyebrow {
     font-size: var(--fs-body);
     color: var(--brand-bright);

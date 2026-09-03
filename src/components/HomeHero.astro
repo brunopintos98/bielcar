@@ -73,12 +73,11 @@ const media = PHOTOS.homeHero;
     min-height: max(560px, calc(100svh - var(--header-h)));
     background: var(--surface-dark);
     overflow: hidden;
-    /* Sistema de radio de imágenes (DESIGN.md §4). El radio va acá y no en
-       `.hero__media`: `.hero` es el que clipea (`overflow: hidden`) y además
-       contiene DOS capas absolutas a `inset: 0` — la foto y el degradado de
-       `.hero::after`. Redondear solo la foto dejaría el degradado con
-       esquinas cuadradas asomando por encima del recorte redondeado. */
-    border-radius: var(--radius-md);
+    /* Sin radio — enmienda de DESIGN.md §1/§4: el hero es full-bleed a 100vw,
+       así que el radio solo se veía en las dos esquinas inferiores (las de
+       arriba quedan contra el header sticky). `overflow: hidden` se queda
+       igual: sigue haciendo falta para clipear el ken-burns de `.hero__media`
+       (`scale(1.06)` al cargar), que si no se recortaría por fuera del hero. */
   }
 
   .hero__media {

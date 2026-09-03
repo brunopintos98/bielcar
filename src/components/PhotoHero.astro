@@ -104,11 +104,11 @@ const { title, lede, image } = Astro.props;
     min-height: clamp(380px, 52svh, 560px);
     background: var(--surface-dark);
     overflow: hidden;
-    /* Sistema de radio de imágenes (DESIGN.md §4). Mismo criterio que
-       HomeHero: el radio va en `.hero` porque es el que clipea y contiene
-       tanto la foto (`.hero__media`) como el degradado (`.hero::after`), las
-       dos a `inset: 0`. */
-    border-radius: var(--radius-md);
+    /* Sin radio — enmienda de DESIGN.md §1/§4: el hero es full-bleed a 100vw,
+       así que el radio solo se veía en las dos esquinas inferiores (las de
+       arriba quedan contra el header sticky). `overflow: hidden` se queda
+       igual: sigue conteniendo las dos capas absolutas a `inset: 0` (la foto
+       y el degradado de `.hero::after`) dentro del alto del section. */
   }
 
   .hero__media {

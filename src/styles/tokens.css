@@ -108,10 +108,17 @@
      tile dejaría esquinas enfrentadas sin gap real entre medio, revelando el
      fondo en cada divisor. Se prefirió mantener esa superficie en radio 0
      antes que aceptar el artefacto o romper el patrón "separación por
-     borde, no por aire". Ver DESIGN.md §4. */
+     borde, no por aire". Ver DESIGN.md §4.
+
+     Segunda excepción, agregada después: los heroes full-bleed (HomeHero y
+     PhotoHero — este último cubre /usados, /nuevos, /vehiculos, /service y
+     /contacto) tampoco llevan este radio. Ocupan 100vw, así que el radio
+     solo se veía en las dos esquinas inferiores (las de arriba quedan contra
+     el header sticky); un radio que solo existe en dos de cuatro esquinas no
+     lee como el sistema de 8px del resto. Ver DESIGN.md §1 y §4. */
   --radius-none: 0;       /* cards de vehículo (fondo/borde, no la foto), inputs, AccessTiles (excepción, ver nota arriba) */
   --radius-sm:   2px;     /* botones */
-  --radius-md:   8px;     /* imágenes: catálogo, carrusel, detalle, heroes, foto de /nosotros */
+  --radius-md:   8px;     /* imágenes: catálogo, carrusel, detalle, foto de /nosotros */
   --radius-full: 9999px;  /* solo FAB y pills de filtro activo */
 
   /* La única sombra permitida: el FAB flota de verdad (§4) */

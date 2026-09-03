@@ -486,3 +486,104 @@ El favicon de hoy **también** se empasta a 16px — no es una regresión, es el
 - `src/layouts/Base.astro`
 - `src/styles/multiaviso.css`
 - `.claude/change-log/branch-main.md` (este archivo — no cuenta contra el set aprobado, se lista por transparencia)
+
+---
+
+## Session 8 — web-feature on `site` (started 2026-09-03T00:00:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-03T00:00:00Z
+session_ended_utc: 2026-09-03T00:15:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/components/AccessTiles.astro
+```
+
+### 1. Initial approved PLAN — 2026-09-03T00:02:00Z
+
+**Pedido:** en `AccessTiles.astro`, tile del medio (`/usados`): `eyebrow: 'Usados'` → `'Multimarca'`, `title: 'Seleccionados'` → `'Usados'`. Copy ya elegido por el usuario entre opciones previas — no se re-propuso texto. `line` y los otros dos tiles quedan igual.
+
+**Consecuencias resueltas en la misma pasada (levantadas por `policy`):**
+1. `const missing = tiles.filter((t) => !t.photo).map((t) => t.eyebrow)` derivaba el texto del `<Placeholder>` del eyebrow. Cambiado a `t.title`: con el swap, `eyebrow` pasó a ser un calificador de marketing ("Multimarca"), no un identificador estable; `title` da un nombre estable por tile ("Nuevos" / "Usados" / "Catálogo completo") aunque el eyebrow cambie de nuevo en el futuro.
+2. Comentario arriba de `.tile__eyebrow` (antes: "0KM / USADOS / TODOS es la etiqueta que dice a qué listado entra el tile... el título de abajo... es el nombre descriptivo, no la categoría") asumía eyebrow=categoría / título=nombre en los tres tiles. El swap invierte esa relación en el tile del medio (título "Usados" ahora es la categoría; eyebrow "Multimarca" es el calificador). Comentario reescrito para describir la jerarquía tipográfica (por qué sigue siendo eyebrow más chico / título más grande) sin afirmar una relación semántica que ya no es uniforme. **CSS sin cambios** — solo el comentario, valores de `font-size` intactos.
+
+**Archivos:** `src/components/AccessTiles.astro` (único archivo tocado).
+
+**Comandos de verificación:** `npm run check` (único configurado para este stack).
+
+**Contratos producidos:** ninguno (no hay otros specialists consumiendo esto).
+**Contratos consumidos:** ninguno.
+
+**Alternativa más fuerte considerada:** mantener `missing` derivado de `t.eyebrow` y aceptar que, si `PHOTOS.tileUsados` volviera a `null`, el placeholder dijera "foto para el tile de Multimarca". Rechazada porque `eyebrow` ya no es un identificador estable (es copy de marketing que puede volver a cambiar), mientras `title` sí lo es en los tres tiles.
+
+**Supuesto que sostiene el approach:** "Usados" y "Multimarca" son vocabulario ya sancionado en el proyecto (DESIGN.md §1 nombra el tile "Usados"; `src/data/site.ts` ya usa "usados multimarca seleccionados"), así que el swap es una recombinación de copy existente, no dato inventado.
+
+**Observación que lo falsaría:** si "Seleccionados" se usara en otro lugar del código como identificador estable (nombre de evento de analytics, referencia cruzada en un comentario), el swap rompería esa referencia. Grep en `src/` confirmó que "Seleccionados" no aparece en ningún otro archivo — no aplica acá.
+
+### 2. Verification — 2026-09-03T00:14:00Z
+
+- `npm run check` → `astro check`: **0 errors, 0 warnings, 1 hint** (el hint es `local2` no usado en `src/data/site.ts`, preexistente y no relacionado a este cambio).
+- Grep de confirmación: `"Seleccionados"` y `tileUsados` no aparecen en ningún otro archivo de `src/` con dependencia del copy cambiado — solo `AccessTiles.astro` tocado.
+- Cambio verificable en `npm run dev` (localhost): no depende de Multiaviso, no requiere `npm run deploy`.
+
+---
+
+## Session 8 — web-feature on `site` (started 2026-09-03T19:05:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-03T19:05:00Z
+session_ended_utc: 2026-09-03T19:24:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/components/HomeHero.astro
+  - src/components/PhotoHero.astro
+  - src/styles/tokens.css
+  - documentation/DESIGN.md
+```
+
+### 1. Initial approved PLAN — 2026-09-03T19:10:00Z
+
+**Pedido del usuario (verbatim):** "a los banners de las pantallas principales sacales el border radius, porque ocupan toda la pantalla. no hace falta, o sea de home, usados, 0km, vehiculos, service y contacto sacale el border radius"
+
+**policy triage (usado tal cual, no re-derivado):** afecta `HomeHero.astro` (`.hero` línea 81, `border-radius: var(--radius-md)`, banner de `/`) y `PhotoHero.astro` (`.hero` línea 111, mismo token, cubre `/usados`, `/nuevos`, `/vehiculos`, `/service`, `/contacto`). El token `--radius-md` en sí NO se toca — catálogo, carrusel, detalle y foto de `/nosotros` lo siguen usando. `tokens.css` (comentario de inventario) y `DESIGN.md` (líneas ~29, ~189, y la cita de línea 282 que resultó ser del carrusel, no de un hero) requieren enmienda en el mismo cambio para que contrato y código no queden en desacuerdo. Fuera de alcance: `PageHero.astro` (ya en radio 0), `multiaviso.css` (fotos de card del plugin, no banners), `nosotros.astro:129` (foto de split, no está en la lista pedida).
+
+**Archivos a tocar:**
+1. `src/components/HomeHero.astro` — sacar `border-radius: var(--radius-md)` de `.hero`, reescribir el comentario que hoy lo justifica.
+2. `src/components/PhotoHero.astro` — mismo tratamiento; un solo componente cubre las otras cinco páginas.
+3. `src/styles/tokens.css` — sacar "heroes" del inventario de consumidores de `--radius-md` (línea 114) y sumar una nota de segunda excepción, en paralelo a la ya documentada de `AccessTiles`.
+4. `documentation/DESIGN.md` — §4 código (~189) y prosa (~193): sacar "heroes" del inventario / de "única excepción". §1 (~línea 42): agregar párrafo "Enmienda posterior" en capas (sin reescribir el original), documentando la segunda excepción y marcando superada la frase "única superficie... que quedó afuera". NO tocar línea 282 (carrusel, fuera de alcance — corrección a la cita de policy) ni §5.2 (no declara radio hoy).
+5. `.claude/change-log/branch-main.md` — este bloque.
+
+**Interfaces:** ninguna — no cambian `Props` de `HomeHero` ni `PhotoHero`.
+
+**Comandos:** `npm run check`, `npm run build`. `npm run deploy` no hace falta — es markup propio, no del plugin.
+
+**Contratos producidos:** n/a. **Contratos consumidos:** n/a.
+
+**Alternativa más fuerte considerada:** agregar un prop `radius` a los heroes para permitir radio por página en el futuro. Rechazada: nada en el pedido ni en DESIGN.md motiva variación por página, y un prop sin uso es complejidad especulativa contra el criterio de "no inventar" del proyecto.
+
+**Supuesto que sostiene el approach:** los seis heroes full-bleed son los únicos consumidores de `--radius-md` que ocupan el viewport de borde a borde; el resto de los consumidores del token (card de catálogo, carrusel, foto de detalle, foto de `/nosotros`) son superficies contenidas donde las 4 esquinas son visibles y deben conservar el radio.
+
+**Observación que lo falsaría:** que alguna de las cinco páginas de `PhotoHero` renderizara el hero inset del viewport (un container o margen no visto envolviéndolo) — ahí la razón "esquinas inferiores contra el header" no aplicaría y sacar el radio recortaría una esquina real y visible en vez de una fantasma.
+
+**Aprobación:** el coordinador confirmó el PLAN tal cual, sin pedir cambios, y sumó una instrucción de verificación explícita: comprobar la observación falsadora (que los seis heroes efectivamente rendericen full-bleed en `index`, `usados`, `nuevos`, `vehiculos`, `service`, `contacto`) antes de tocar los componentes, y parar si alguno resultaba inset. También confirmó línea 282 fuera de alcance y §5.2 sin cambios.
+
+### 2. Implementation adjustment — 2026-09-03T19:15:00Z
+
+**No re-approval (in scope):** al escribir el comentario de reemplazo en `PhotoHero.astro` noté que, a diferencia de `HomeHero.astro`, este componente NO tiene animación ken-burns en `.hero__media` (solo `filter: brightness`). El comentario planeado ("`overflow: hidden` sigue clipeando el ken-burns") no aplica ahí tal cual — habría sido una afirmación falsa sobre el propio código. Ajustado a la razón real: `overflow: hidden` sigue conteniendo las dos capas absolutas a `inset: 0` (foto + degradado) dentro del alto del section.
+
+**What this teaches:** no asumir que dos componentes hermanos (`HomeHero` / `PhotoHero`) comparten exactamente la misma justificación técnica solo porque comparten estructura visual — hay que releer cada uno antes de escribir su comentario, no copiar el razonamiento de uno al otro.
+
+### 3. Verification — 2026-09-03T19:23:00Z
+
+**Falsifying-observation check (pedido explícito del coordinador, hecho ANTES de editar código):** grep de `HomeHero`/`PhotoHero` en las seis páginas (`index`, `usados`, `nuevos`, `vehiculos`, `service`, `contacto`) confirmó que el hero es el primer hijo directo dentro de `<main id="main">` (definido en `src/layouts/Base.astro`), sin ningún `.container` ni wrapper con padding envolviéndolo — los `<div class="container">` que existen están DENTRO de `.hero__content`, como se espera. `grep "#main"` en `src/styles/base.css` no devolvió reglas de padding/max-width. Full-bleed confirmado en las seis páginas — no hubo que parar.
+
+- `npm run check` → `astro check`: **0 errors, 0 warnings, 1 hint**. El hint (`local2` no usado en `src/data/site.ts`) es preexistente, no relacionado a este cambio.
+- `npm run build` → **7 page(s) built**, sin errores.
+- `npm run deploy` no se corrió — no hacía falta, confirmado por policy (markup propio, no del plugin).
