@@ -743,6 +743,16 @@
        un solo número, dos consumidores. */
     --ma-sheet-head: 56px;
     --ma-sheet-foot: calc(72px + env(safe-area-inset-bottom, 0px));
+    /* Vuelve a 116px: se había ensanchado a 140 para que entrara el badge, y
+       el badge se mudó a la barra de la columna derecha.
+
+       La cuenta, a 13px (`--fs-label`) y con 12px de padding por lado, son
+       92px útiles contra 116px. Contra los ocho labels reales: "Rango de
+       kilometraje" (~126px) y "Rango de precios" envuelven a dos líneas EN LOS
+       DOS anchos; "Carrocería" (~63px), "Combustible" y "Transmisión" (~69px)
+       entran en los dos. El único que cambia es "Ordenar vehículos" (~107px),
+       que pasa de una línea a dos. Ese es el precio de devolverle 24px de
+       ancho al panel, que justo ahora pierde alto por la barra. */
     --ma-rail-w: 116px;
 
     /* La hoja no es full-screen: ocupa el 80% de abajo y deja ver el listado
@@ -841,6 +851,10 @@
        crecer HACIA ARRIBA — o sea que la animación del plugin se lee como una
        hoja que sube desde el borde inferior, gratis. Al terminar, jQuery saca
        el height inline y vuelve a valer este calc. */
+    /* Hubo una vuelta en que esto restaba también el alto de la zona de
+       filtros aplicados, que era una caja fija apoyada acá arriba. Ya no: esa
+       zona vive DENTRO de este panel y scrollea con el contenido, así que no
+       le roba alto a nadie y el `calc` vuelve a ser el de siempre. */
     height: calc(var(--ma-sheet-h) - var(--ma-sheet-head) - var(--ma-sheet-foot));
     z-index: var(--z-filters);
 
@@ -1086,6 +1100,49 @@
     justify-content: space-between;
   }
 
+  /* ─── Zona de filtros aplicados ──────────────────────────────────────────
+     Vive DENTRO de `#FilterContent`, insertada por el script justo después del
+     bloque de orden, así que scrollea con el resto de los filtros. Orden de la
+     columna: `#Counts`, orden, esta zona, el resto de los bloques.
+
+     Antes fue una caja `position: fixed` apoyada arriba del panel. Con eso el
+     panel tenía que descontar su alto (`--ma-applied-h`, medido por JS) y la
+     zona necesitaba tope y scroll propio, porque con 4 filtros se comía el 50%
+     de la hoja en 390x844 y el 66% en 360x640. Todo eso se fue: adentro del
+     flujo no le roba alto a nada y crece lo que tenga que crecer.
+
+     El precio está pagado en otro lado y hay que saberlo: para estar acá, este
+     nodo se INSERTA en el árbol del plugin. Es la excepción acotada que
+     CLAUDE.md autoriza — contenedor propio, sin la clase `.filter-block`, sin
+     mutar nodos ajenos, inserción idempotente.
+
+     Sin `position`, sin `z-index` y sin `transform`: es un hijo más del panel y
+     el `transform` de entrada de la hoja lo pone el chrome en sus cajas fijas,
+     no acá (un transform en un ancestro de `#MultiavisoWrapper` rompería el
+     anclaje al viewport de esas cajas).
+
+     `padding-inline` tampoco: el panel ya tiene `--gutter`, y agregarlo acá
+     indentaría esta zona respecto de los bloques de abajo. El ritmo vertical
+     copia el de `.filter-block` (`padding-block: var(--space-4)`) para que la
+     columna se lea como una sola lista. */
+  .catalog #MultiavisoWrapper #FilterContent > .ma-sheet__applied {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-block: var(--space-4);
+    border-bottom: 1px solid var(--ma-rule);
+    /* mismo aire que los bloques al llegar por el riel; el script lee este
+       valor con `getComputedStyle` para calcular el `scrollTo` */
+    scroll-margin-top: var(--space-4);
+  }
+
+  /* Tiene que ganarle en especificidad a la regla de arriba, que es
+     `.catalog #MultiavisoWrapper #FilterContent > …`: con el selector pelado,
+     el `display: flex` le ganaba y el atributo `hidden` no hacía nada. */
+  .catalog #MultiavisoWrapper #FilterContent > .ma-sheet__applied[hidden] {
+    display: none;
+  }
+
   .ma-sheet__rail {
     position: fixed;
     bottom: var(--ma-sheet-foot);
@@ -1104,13 +1161,18 @@
     align-items: center;
     width: 100%;
     min-height: 48px;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-3);
     border: 0;
     background: none;
     color: var(--ma-text-muted);
     font-family: var(--font-body);
-    font-size: var(--fs-small);
-    line-height: var(--lh-small);
+    /* Estaba en `--fs-small` / `--lh-small`, que NO EXISTEN: no están definidos
+       en tokens.css ni en ningún otro archivo de src/styles/. Una custom
+       property indefinida sin fallback invalida la declaración en tiempo de
+       cómputo, así que el `font-size` caía al heredado (15px en mobile) y los
+       labels largos —"Rango de kilometraje"— envolvían a tres líneas. */
+    font-size: var(--fs-label);
+    line-height: var(--lh-label);
     text-align: left;
     cursor: pointer;
     transition: transform var(--dur) var(--ease);
@@ -1122,7 +1184,13 @@
     color: var(--ma-text);
   }
 
-  .ma-sheet__rail-item[data-ma-filled]::after {
+  /* El punto: "esta categoría tiene selección". `[data-ma-filled]` lo pone
+     `paintPending()` para lo pendiente y para las keys aplicadas que el bloque
+     todavía controla; `[data-ma-applied]` lo trae la fila sintetizada, que por
+     definición está aplicada. Son dos atributos y no uno porque
+     `resetPending()` borra todos los `[data-ma-filled]` del riel al descartar. */
+  .ma-sheet__rail-item[data-ma-filled]::after,
+  .ma-sheet__rail-item[data-ma-applied]::after {
     content: '';
     width: 6px;
     height: 6px;
@@ -1133,6 +1201,66 @@
   }
 
   .ma-sheet__rail-item:active {
+    transform: scale(0.97);
+  }
+
+  /* El badge ES el control: 44px de alto por todo su ancho, muy por encima del
+     mínimo táctil. La ✕ es la afordancia adentro del target, no un target
+     aparte. Toma la forma de pill de los chips de `#CurrentFilters` en desktop
+     — es la misma idea en el otro viewport.
+
+     En columna el badge SÍ puede envolver: `max-width: 100%` más
+     `overflow-wrap: anywhere` para que un valor largo crezca en alto adentro de
+     la pill en vez de desbordar hacia la derecha, que es lo que hacía cuando la
+     zona scrolleaba en horizontal. Truncar sigue descartado: el valor es el
+     dato. El fondo es `--ma-bg`, un escalón por debajo de la zona, para que se
+     lea como pieza sobre ella y no como continuación. */
+  .ma-sheet__applied-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    max-width: 100%;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--ma-rule);
+    border-radius: var(--radius-full);
+    background: var(--ma-bg);
+    color: var(--ma-text);
+    font-family: var(--font-body);
+    font-size: var(--fs-label);
+    line-height: var(--lh-label);
+    overflow-wrap: anywhere;
+    text-decoration: none;
+    transition: transform var(--dur) var(--ease);
+  }
+
+  /* Presentación, no dato: el valor se guarda y se envía crudo (el `href` de
+     remoción se construye con el valor tal cual viaja en la URL), y acá solo se
+     muestra con inicial mayúscula — `suv` -> `Suv`.
+
+     `text-transform: capitalize` y no `::first-letter`: capitaliza CADA
+     palabra, que es lo correcto para los valores multipalabra del catálogo
+     ("land rover" -> "Land Rover"); `::first-letter` habría dejado "Land
+     rover". Lo que ya viene en mayúsculas no se toca —`USED` sigue `USED`,
+     porque `capitalize` no baja nada—, y el único caso donde queda peor que el
+     original es una sigla en minúscula en medio de una frase, que no aparece en
+     esta taxonomía. */
+  .ma-sheet__applied-value {
+    text-transform: capitalize;
+  }
+
+  .ma-sheet__applied-badge::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    margin-left: auto;
+    flex-shrink: 0;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 0 0-1.4 1.4l4.9 4.9-4.9 4.9a1 1 0 0 0 1.4 1.4l4.9-4.9 4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 0 0-1.4 1.4l4.9 4.9-4.9 4.9a1 1 0 0 0 1.4 1.4l4.9-4.9 4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4z'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .ma-sheet__applied-badge:active {
     transform: scale(0.97);
   }
 
@@ -1215,7 +1343,8 @@
     .ma-sheet__close:active,
     .ma-sheet__clear:active,
     .ma-sheet__apply:active,
-    .ma-sheet__rail-item:active {
+    .ma-sheet__rail-item:active,
+    .ma-sheet__applied-badge:active {
       transform: none;
     }
   }
@@ -1226,6 +1355,24 @@
    700px, así que acá no hay nada que deshacer. */
 .ma-sheet {
   display: none;
+}
+
+/* La zona de filtros aplicados vive adentro de `#FilterContent`, que en desktop
+   es la sidebar del plugin y SÍ se ve. Acá no va: en desktop el estado aplicado
+   lo muestran los chips de `#CurrentFilters` (§8). El script además solo la
+   inserta en mobile; esto cubre el caso de cruzar a desktop con el nodo ya
+   insertado.
+
+   VA DENTRO DE UN MEDIA QUERY, y no suelta como el `.ma-sheet` de arriba: este
+   selector tiene la MISMA especificidad que el que la muestra en mobile, y como
+   está después en el archivo, suelto le ganaría también abajo de 700px y la
+   zona no se vería nunca. `.ma-sheet` puede darse el lujo porque su regla de
+   mobile (`.catalog .ma-sheet`) tiene una clase más. El corte es 700 —el mismo
+   del plugin— y complementa al 699 de la sección de mobile sin dejar hueco. */
+@media (min-width: 700px) {
+  .catalog #MultiavisoWrapper #FilterContent > .ma-sheet__applied {
+    display: none;
+  }
 }
 
 /* -------------------------------------------------------- 8. paginación ---- */

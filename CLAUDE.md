@@ -93,7 +93,16 @@ Cada una tiene una falla concreta detrás. No son preferencias.
 
 **Los overrides del plugin van prefijados con `#MultiavisoWrapper`.** Nunca un selector suelto como `.item-title`: son clases genéricas y chocan con el resto del sitio. Ganar por especificidad de ID, no por `!important`. No usar el nombre de variable `--screen-height`: el plugin ya lo define.
 
-**No manipular con JavaScript el markup del plugin.** Si algo hay que ajustar, es CSS.
+**No manipular con JavaScript el markup del plugin.** Si algo hay que ajustar, es CSS. La regla existe porque el árbol de adentro de `#MultiavisoContainer` lo rehace el plugin cuando quiere y no tenemos contrato sobre su forma: cualquier cosa que le mutemos se pierde o se rompe sin aviso.
+
+**La única excepción, acotada:** el chrome de filtros en mobile inserta **un contenedor propio** dentro de `#FilterContent` —la zona de filtros aplicados— porque tiene que scrollear intercalada entre los bloques del plugin, y una caja `position: fixed` por fuera solo puede quedar arriba de todo. Se aprobó explícitamente, a la vista de la alternativa. Las condiciones que la hacen segura son parte de la excepción, no detalles:
+
+- **Solo nodos NUESTROS.** Nunca se muta, mueve ni borra un nodo del plugin. El único write sobre un nodo ajeno sigue siendo el atributo `data-ma-pending`.
+- **El contenedor nunca lleva la clase `.filter-block`.** El script indexa los bloques con `:scope > .filter-block` y usa índices posicionales; un nodo nuestro con esa clase correría el índice de todas las categorías y rompería el estado de los filtros, el riel y la URL que se arma al confirmar.
+- **La inserción es idempotente**, re-verificada en el tick que ya existe: si el nodo está donde corresponde, no se toca nada. Eso es también lo que evita el loop con el `MutationObserver`, que escucha `childList` en ese subárbol.
+- **Nada de `display: flex` + `order` sobre `#FilterContent`** para reordenar: jQuery escribe `display: block` inline al abrir y lo pisa; forzarlo con `!important` rompería la detección de abierto/cerrado. El orden se logra insertando en la posición correcta.
+
+Si aparece otro caso que parezca necesitar esto, no se extiende la excepción por analogía: se plantea y se decide.
 
 **No hay páginas de detalle de vehículo.** El plugin lo renderiza in-place sobre la misma URL con `?ma_carid=`. `/usados` y el detalle de un auto son el mismo archivo.
 

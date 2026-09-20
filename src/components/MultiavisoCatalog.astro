@@ -115,6 +115,24 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       </button>
     </div>
 
+    {/*
+      Zona de filtros aplicados. Nace acá, en NUESTRO chrome, pero el script la
+      MUEVE adentro de `#FilterContent` —justo después del bloque de orden— con
+      `insertBefore`, para que scrollee junto con la lista de filtros en vez de
+      robarle alto desde arriba.
+
+      Es la única excepción al "no manipular con JavaScript el markup del
+      plugin", y está acotada en CLAUDE.md: un contenedor propio, nunca un nodo
+      ajeno mutado, nunca con la clase `.filter-block` —que lo volvería visible
+      para `getBlocks()` y correría los índices de todos los bloques— y
+      re-insertado de forma idempotente.
+
+      Antes fue una caja `position: fixed` arriba del panel. Se cambió a pedido
+      del usuario después de verla en producción: fija le robaba alto al panel
+      (hasta el 50% con 4 filtros) y hubo que ponerle tope y scroll propio.
+    */}
+    <div class="ma-sheet__applied" data-ma-applied-bar hidden></div>
+
     <div class="ma-sheet__foot">
       <button class="ma-sheet__clear" type="button" hidden>Limpiar filtros</button>
       <button class="ma-sheet__apply" type="button">Ver resultados</button>
@@ -152,9 +170,12 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     const applyBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__apply');
     const clearBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__clear');
     const rail = sheet.querySelector<HTMLElement>('.ma-sheet__rail');
+    const appliedBar = sheet.querySelector<HTMLElement>('[data-ma-applied-bar]');
     const catalog = container.closest<HTMLElement>('.catalog');
     let open = false;
-    let activeCat: number | null = null;
+    /* Token de la sección marcada en el riel: el `nth` de un bloque como
+       string, o `applied` para nuestra zona de filtros aplicados. */
+    let activeCat: string | null = null;
     /* Estado del scroll programático hacia una categoría (click en el riel).
        `scrollTarget` es el `scrollTop` que se le pidió a `#FilterContent`; el
        listener de `scroll` lo compara contra el real para saber cuándo
@@ -177,8 +198,16 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     let wipeAll = false;
     const selections = new Map<number, Map<string, string> | null>();
 
+    /* El recuento del trigger sale de la MISMA fuente que los badges: las keys
+       `ma_*` de la URL agrupadas por categoría. Antes contaba nodos
+       `.current-filter`, lo que en la Session 15 se defendió como "no
+       regresionar una superficie visible"; con el badge derivando de la URL
+       esa asimetría se da vuelta — si el plugin no emitiera chip para algún
+       filtro, el trigger diría "Filtros" con un filtro aplicado. Decisión del
+       usuario, no consecuencia de una hipótesis confirmada: cuánto cubre
+       `#CurrentFilters` sigue sin verificarse. */
     const syncFilterCount = (): void => {
-      const n = document.querySelectorAll('#CurrentFilters .current-filter').length;
+      const n = appliedFilters().length;
       catalog?.style.setProperty('--ma-filter-count', n > 0 ? `" (${n})"` : '""');
     };
 
@@ -238,26 +267,177 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       return [...block.querySelectorAll<HTMLAnchorElement>('#SortPopupInner a')];
     };
 
-    /* Keys que ESTE bloque controla. Unión de los ma_* de sus links, menos
-       los que aparecen en todos (contexto ya aplicado, p.ej. ma_brand en
-       Carrocería con Honda puesto). Si unión e intersección coinciden, el
-       bloque solo tiene esas keys (Marca = ma_brand). */
+    /* Compara dos valores de la misma key. Case-insensitive porque el plugin
+       emite `ma_status=USED` en unos links y `ma_status=used` en otros dentro
+       del MISMO documento (DESIGN.md §6.4). Si esa variación cae adentro de un
+       bloque, sin esto `ma_status` contaría como "varía" y volvemos al bug de
+       abajo. Normaliza solo para COMPARAR: `compose()` y `selectFilter()`
+       siguen guardando el valor exacto del link, que es lo que §6.4 pide a la
+       hora de construir. `undefined` (key ausente) es un valor distinto de
+       cualquier string. */
+    const sameValue = (a: string | undefined, b: string | undefined): boolean =>
+      a === undefined ? b === undefined : b !== undefined && a.toLowerCase() === b.toLowerCase();
+
+    /* Keys que ESTE bloque controla: las que VARÍAN de valor entre sus
+       opciones.
+
+       La versión anterior las definía como "unión menos intersección", con un
+       escape: si unión e intersección coincidían, devolvía la unión entera. Las
+       dos ramas estaban mal y las dos se arreglan acá:
+
+       1. El escape. Con un filtro ya aplicado en la URL, TODOS los links de un
+          bloque cargan la key propia Y la del contexto —en `/usados?ma_status=USED`
+          el bloque Marca linkea a `?ma_status=USED&ma_brand=Honda`,
+          `?ma_status=USED&ma_brand=Geely`—, así que unión e intersección
+          coinciden SIEMPRE y cada bloque terminaba "poseyendo" también
+          `ma_status`. De ahí el punto encendido en todas las categorías apenas
+          había un `ma_*` en la URL, y el que se encendieran todas juntas al
+          tocar un filtro.
+       2. La otra rama. Al excluir la intersección se caía la key que sí varía
+          pero está presente en todos los links: en el bloque de rango,
+          `ma_max_price` está en todos con valores distintos, así que quedaba
+          fuera de `owned` y `compose()` no lo borraba al cambiar de rango — un
+          máximo viejo viajaba pegado a "Ver resultados".
+
+       "Varía" resuelve los dos: el contexto viaja idéntico en todos los links,
+       la key propia no. Ausente cuenta como valor distinto (`ma_min_price`
+       falta en "hasta 10.000").
+
+       Bloque de una sola opción, donde no hay variación posible: se caen las
+       keys cuyo valor ya es el de la URL y queda lo que el link PROPONE
+       cambiar. Si no queda nada —la única opción ya está aplicada— el set es
+       vacío, que es la respuesta correcta: no hay nada que seleccionar ni que
+       borrar. `selectFilter` tiene el guard. */
     const ownedKeys = (block: Element): Set<string> => {
       const maps = linksIn(block).map((link) => readMa(link.href));
       if (maps.length === 0) return new Set();
       const union = new Set<string>();
       for (const map of maps) for (const key of map.keys()) union.add(key);
-      const intersection = new Set<string>();
+
+      const varying = new Set<string>();
       for (const key of union) {
-        if (maps.every((map) => map.has(key))) intersection.add(key);
+        const first = maps[0].get(key);
+        if (maps.some((map) => !sameValue(map.get(key), first))) varying.add(key);
       }
-      if (intersection.size === union.size) return union;
-      const owned = new Set<string>();
-      for (const key of union) if (!intersection.has(key)) owned.add(key);
-      return owned;
+      if (varying.size > 0) return varying;
+
+      const url = baselineMa();
+      const changed = new Set<string>();
+      for (const key of union) if (!sameValue(maps[0].get(key), url.get(key))) changed.add(key);
+      return changed;
     };
 
     const baselineMa = (): Map<string, string> => readMa(location.href);
+
+    /* ─── Nombre de categoría para el badge de filtro aplicado ─────────────
+       Cuando un filtro está aplicado, el plugin SACA esa categoría del panel:
+       su `.filter-block-label` deja de existir y la fila del riel se queda sin
+       nombre. No se puede resolver con un mapa `ma_* -> "Marca"` escrito a
+       mano: las categorías son dinámicas —`ma_model` ni siquiera aparece hasta
+       que hay una marca filtrada— y no tenemos el mapeo verificado (la captura
+       del usuario muestra "CARROCERÍA" y "MARCA" pero no a qué key va cada
+       una, y hay un chip "Autos y Camionetas" que abre que `ma_type` sea el
+       nivel de arriba y "Carrocería" sea `ma_subtype`).
+
+       Lo que sí hay: en CUALQUIER page load donde el bloque está presente, su
+       label y su key están los dos en el DOM al mismo tiempo. Aparearlos es
+       lectura, no inferencia. Se persiste por sesión y el load siguiente —el
+       que ya no ofrece la categoría— lo lee de ahí. Cubre el flujo real
+       entero: para llegar a "filtrado por Honda" hubo que pasar por una página
+       donde el bloque Marca existía con sus opciones.
+
+       Orden de resolución: aprendido -> sin nombre. NO hay mapa fijo de seed a
+       propósito: hoy no existe un solo par key->label verificado, y una
+       constante vacía sería una invitación a llenarla a ojo. Si alguna vez hay
+       pares verificados, entran acá, ANTES de consultar el cache.
+
+       Caso descubierto y aceptado: entrada directa a un link compartido con
+       filtro aplicado, sin visita previa al catálogo en esa sesión. Ahí no hay
+       nada aprendido y la fila muestra SOLO el valor (`Honda ✕`), sin línea de
+       categoría. Nunca un nombre adivinado.
+
+       Indexado por key `ma_*`, NUNCA por posición: los índices `nth` se corren
+       entre page loads cuando un bloque aparece o desaparece (`ma_model` es el
+       caso vivo). La key es lo único estable. */
+    const LABEL_STORE_KEY = 'bielcar:ma-labels:v1';
+    const LABEL_MAX = 32;
+    const LABEL_MAX_LEN = 60;
+    const LABEL_KEY_RE = /^ma_[a-z0-9_]+$/;
+
+    /* Espejo en memoria. Si `sessionStorage` tira —modo privado de iOS, cookies
+       bloqueadas— los labels aprendidos en ESTE load siguen sirviendo; entre
+       navegaciones se pierden y el badge cae al valor solo. Cache de
+       conveniencia: si falla, nada se rompe. */
+    const labels = new Map<string, string>();
+
+    const readLabelCache = (): void => {
+      let raw: string | null = null;
+      try {
+        raw = window.sessionStorage.getItem(LABEL_STORE_KEY);
+      } catch {
+        return;
+      }
+      if (!raw) return;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return; /* corrupto: se ignora y se sobrescribe en el próximo aprendizaje */
+      }
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return;
+      for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+        if (labels.size >= LABEL_MAX) break;
+        if (!LABEL_KEY_RE.test(key) || typeof value !== 'string') continue;
+        const label = value.trim();
+        if (label === '' || label.length > LABEL_MAX_LEN) continue;
+        labels.set(key, label);
+      }
+    };
+
+    const writeLabelCache = (): void => {
+      try {
+        window.sessionStorage.setItem(LABEL_STORE_KEY, JSON.stringify(Object.fromEntries(labels)));
+      } catch {
+        /* storage lleno o deshabilitado: se sigue con el espejo en memoria */
+      }
+    };
+
+    /* Aprende los pares key->label de los bloques que el panel SÍ ofrece.
+       Memoizado por firma del panel y sin depender del viewport: un load en
+       desktop también enseña, y en mobile el panel existe en el DOM aunque
+       esté colapsado. */
+    let learnedSig = '';
+    const learnLabels = (): void => {
+      const entries = categoryBlocks();
+      if (entries.length === 0) return;
+      const sig = entries.map(({ nth, label }) => `${nth}:${label}`).join('|');
+      if (sig === learnedSig) return;
+      learnedSig = sig;
+
+      let changed = false;
+      for (const { block, label } of entries) {
+        for (const key of ownedKeys(block)) {
+          if (!labels.has(key) && labels.size >= LABEL_MAX) continue;
+          if (labels.get(key) === label) continue;
+          /* El label se registra para CADA key propia del bloque: "Rango de
+             precios" queda bajo `ma_min_price` y `ma_max_price`, así el chip
+             del rango —que remueve las dos— resuelve igual. */
+          labels.set(key, label.slice(0, LABEL_MAX_LEN));
+          changed = true;
+        }
+      }
+      if (changed) writeLabelCache();
+    };
+
+    const labelFor = (keys: Iterable<string>): string | null => {
+      for (const key of [...keys].sort()) {
+        const label = labels.get(key);
+        if (label !== undefined) return label;
+      }
+      return null;
+    };
+
+    readLabelCache();
 
     const compose = (): Map<string, string> => {
       if (wipeAll) return new Map();
@@ -280,6 +460,253 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       for (const [key, value] of map) params.set(key, value);
       const query = params.toString();
       return query ? `${location.pathname}?${query}` : location.pathname;
+    };
+
+    /* ─── Filtros aplicados: salen de la URL ──────────────────────────────
+       La primera versión de esto los leía de los chips de `#CurrentFilters`, y
+       en producción el badge no apareció nunca: en
+       `/vehiculos?ma_brand=Honda`, con el filtro claramente aplicado (13
+       resultados y el bloque Modelo presente), no se dibujó ninguna fila.
+
+       No se pudo determinar POR QUÉ. Las candidatas —que el plugin no emita
+       chip para marca, que su href no saque el parámetro, que el `<a>` esté
+       estructurado distinto, que el texto saliera vacío— son indistinguibles
+       desde el código: las cuatro terminan en "lista vacía". Ese es el
+       problema de fondo: aquel lector tenía CINCO maneras de devolver vacío sin
+       decir cuál. Cuánto cubre `#CurrentFilters` sigue SIN verificarse.
+
+       Por eso la fuente pasa a ser la URL, que es la única que no puede
+       faltar: si `ma_brand=Honda` no estuviera ahí, el filtro no estaría
+       aplicado. El chip queda como fuente OPCIONAL de un texto más legible.
+
+       `readMa` ya excluye `ma_page` y `ma_carid` (`IGNORED_PARAMS`). */
+    type Applied = { keys: Set<string>; value: string };
+
+    /* Keys que NO se ofrecen como badge. `ma_sort` no es un filtro que se
+       "saque": sacarlo revierte a un orden por defecto que el usuario nunca
+       eligió, y su bloque está SIEMPRE en el panel, así que se cambia en el
+       lugar. Es una decisión, no un accidente — por eso está acá y no cae por
+       omisión en algún `if`. */
+    const BADGE_EXCLUDED = new Set(['ma_sort']);
+
+    /* `textContent` entero, no solo los nodos de texto directos: si el plugin
+       envuelve el valor en un `<span>`, la versión anterior devolvía cadena
+       vacía y el chip se descartaba. Los íconos de Font Awesome son `::before`
+       y no aportan texto; si la ✕ viniera como glifo al final, se saca acá.
+       NO se sacan `x` / `X`: con el texto completo, un valor que termina en
+       equis ("Matrix") quedaba mutilado.
+
+       Ahora esto es seguro porque el texto dejó de ser load-bearing: si sale
+       vacío, el badge cae al valor de la URL en vez de no dibujarse. */
+    const chipText = (node: HTMLElement): string =>
+      (node.textContent ?? '').replace(/[×✕✖]\s*$/, '').trim();
+
+    /* Índice key -> texto del chip, si es que hay chips. Puramente
+       decorativo: si `#CurrentFilters` está vacío, si el `<a>` no está donde se
+       lo busca o si su href no revela ninguna key, el índice queda corto y no
+       pasa nada. La atribución sigue siendo por diferencia de keys contra la
+       URL, que es lo que el DOM real mostró alguna vez
+       (`CatalogBrandSync.astro`), pero ya no se apuesta nada a que sea así. */
+    const chipIndex = (): Map<string, string> => {
+      const index = new Map<string, string>();
+      const current = baselineMa();
+      for (const chip of document.querySelectorAll<HTMLElement>(
+        '#CurrentFilters .current-filter',
+      )) {
+        /* El chip puede ser el propio `<a>` o un contenedor con el `<a>`
+           adentro: se cubren los dos sin asumir cuál. */
+        const link =
+          chip instanceof HTMLAnchorElement ? chip : chip.querySelector<HTMLAnchorElement>('a');
+        if (!link) continue;
+        const text = chipText(link);
+        if (text === '') continue;
+        const without = readMa(link.href);
+        for (const key of current.keys()) if (!without.has(key)) index.set(key, text);
+      }
+      return index;
+    };
+
+    const RANGE_KEY_RE = /^ma_(?:min|max)_(.+)$/;
+
+    /* Cómo varias keys forman UNA categoría.
+
+       1. Por label aprendido. El aprendizaje registra el label de un bloque
+          para CADA key de su `ownedKeys`, así que dos keys con el mismo label
+          son dos keys que fueron vistas como propias del MISMO bloque:
+          agrupar por label es agrupar por bloque, con dato leído del DOM.
+       2. Sin label todavía (entrada en frío), `ma_min_X` y `ma_max_X` van
+          juntas por el nombre del parámetro. Un rango es UN control: sacar
+          solo el mínimo dejaría un "hasta 20.000" que nadie pidió.
+       3. Si no, una key es una categoría.
+
+       Riesgo asumido de (1): dos bloques distintos con el mismo label
+       fusionarían sus keys en un badge y la ✕ sacaría las dos. */
+    const groupIdFor = (key: string): string => {
+      const label = labels.get(key);
+      if (label !== undefined) return `label:${label}`;
+      const range = RANGE_KEY_RE.exec(key);
+      if (range) return `range:${range[1]}`;
+      return `key:${key}`;
+    };
+
+    const appliedFilters = (): Applied[] => {
+      /* Vista de detalle: `?ma_carid=` renderiza la ficha in-place sobre la
+         misma URL (§6.4) y los `ma_*` que la acompañan son contexto del link
+         compartido, no filtros que alguien esté aplicando. Sin esto, abrir un
+         vehículo compartido dibujaría un badge "USED ✕" arriba de la ficha. */
+      if (new URL(location.href).searchParams.has('ma_carid')) return [];
+
+      const url = baselineMa();
+      const chips = chipIndex();
+      const groups = new Map<string, Set<string>>();
+      for (const key of url.keys()) {
+        if (BADGE_EXCLUDED.has(key)) continue;
+        const id = groupIdFor(key);
+        const group = groups.get(id);
+        if (group) group.add(key);
+        else groups.set(id, new Set([key]));
+      }
+
+      const result: Applied[] = [];
+      for (const keys of groups.values()) {
+        /* min antes que max; el resto, alfabético. Es el orden en que se
+           muestra un rango. */
+        const ordered = [...keys].sort((a, b) => {
+          const ra = a.includes('_min_') ? 0 : a.includes('_max_') ? 2 : 1;
+          const rb = b.includes('_min_') ? 0 : b.includes('_max_') ? 2 : 1;
+          return ra - rb || a.localeCompare(b);
+        });
+        /* El texto del chip si lo hay; si no, el valor crudo de la URL, que
+           `URLSearchParams` ya percent-decodificó. SIN title-case, sin
+           diccionario, sin capitalización inventada: si el valor es "USED", el
+           badge dice "USED". Feo y honesto. Un rango sin chip se muestra como
+           sus valores unidos, sin moneda ni separadores de miles: no sabemos
+           la unidad y no se supone. */
+        const fromChip = ordered.map((key) => chips.get(key)).find((text) => text !== undefined);
+        const value =
+          fromChip ??
+          ordered
+            .map((key) => url.get(key) ?? '')
+            .filter((raw) => raw !== '')
+            .join(' – ');
+        if (value === '') continue;
+        result.push({ keys: new Set(ordered), value });
+      }
+      return result;
+    };
+
+    /* Badges vivos, para poder refrescarles el destino cuando cambia lo
+       pendiente. Los vacía y los repuebla `renderApplied()`. */
+    const badges = new Map<HTMLAnchorElement, Applied>();
+
+    /* Destino de la ✕ del badge. Diverge A PROPÓSITO del ✕ de desktop, que
+       navega al href crudo del chip y por lo tanto descarta lo pendiente:
+       adentro del modal el badge es mucho más fácil de tocar por accidente, y
+       perder una selección a medio armar sin aviso es peor que divergir. Las
+       keys que remueve siguen saliendo del href del chip (el diff contra
+       `location.href`); lo único que cambia es a dónde se navega.
+
+       Sin nada pendiente, `compose()` devuelve `baselineMa()` y el resultado es
+       idéntico a navegar al href del chip — el caso común no cambia de
+       comportamiento. */
+    const removalUrl = (applied: Applied): string => {
+      const next = compose();
+      for (const key of applied.keys) next.delete(key);
+      return toUrl(next);
+    };
+
+    const makeBadge = (applied: Applied): HTMLAnchorElement => {
+      const badge = document.createElement('a');
+      /* `applied-badge` y no `rail-badge`: desde la Session 17 el badge no vive
+         en el riel sino en la barra de la columna derecha. */
+      badge.className = 'ma-sheet__applied-badge';
+      badge.href = removalUrl(applied);
+      /* El control táctil es el badge ENTERO (44px de alto por el ancho del
+         riel); la ✕ es la afordancia adentro del target, no un target aparte.
+         Por eso el nombre accesible va acá y no en un botón hijo. */
+      badge.setAttribute('aria-label', `Quitar filtro: ${applied.value}`);
+      badge.title = applied.value;
+      const text = document.createElement('span');
+      /* La clase existe para que el CSS pueda capitalizar la primera letra sin
+         tocar el dato: el valor se guarda crudo y el `href` de remoción se
+         construye aparte. */
+      text.className = 'ma-sheet__applied-value';
+      /* textContent siempre, nunca innerHTML: el valor sale del DOM del plugin
+         y el label puede salir de `sessionStorage`, que cualquier script del
+         origen puede escribir. */
+      text.textContent = applied.value;
+      badge.appendChild(text);
+      badges.set(badge, applied);
+      return badge;
+    };
+
+    /* ─── La inserción en el árbol del plugin ──────────────────────────────
+       Mueve nuestra zona de aplicados adentro de `#FilterContent`, justo
+       DESPUÉS del bloque de orden: `#Counts`, orden, nuestras activas, el
+       resto. Es la excepción acotada que CLAUDE.md autoriza — un contenedor
+       propio, nunca un nodo del plugin mutado.
+
+       Idempotente a propósito, y esa es la defensa contra el loop: el
+       MutationObserver de más abajo escucha `childList` en el subárbol, así que
+       esta inserción SE DISPARA a sí misma un tick. Al tick siguiente el nodo
+       ya está donde corresponde, no se muta nada y la cadena muere. El costo es
+       un frame. No se usa un flag "estoy mutando": el callback del observer
+       llega como microtask DESPUÉS del task actual, así que un flag sincrónico
+       sería una carrera, no una guarda.
+
+       Solo en mobile: en desktop el panel es la sidebar del plugin y ahí el
+       estado aplicado ya lo muestran sus propios chips (§8). El CSS además lo
+       deja en `display: none` fuera del media query, por si el viewport cruza a
+       desktop con el nodo ya insertado. */
+    const ensureAppliedNode = (): void => {
+      if (!appliedBar || !mq.matches) return;
+      const panel = document.getElementById('FilterContent');
+      if (!panel) return;
+
+      /* Primero el selector barato: `#Sort` es el id que el plugin le pone al
+         bloque de orden (§6.1). El fallback por `ownedKeys` solo corre si ese
+         id no está, para no parsear todos los links del panel en cada tick. */
+      const sortBlock =
+        panel.querySelector<HTMLElement>(':scope > #Sort') ??
+        getBlocks().find((block) => ownedKeys(block).has('ma_sort')) ??
+        null;
+
+      if (appliedBar.parentElement === panel && appliedBar.previousElementSibling === sortBlock) {
+        return;
+      }
+      panel.insertBefore(appliedBar, sortBlock ? sortBlock.nextSibling : panel.firstChild);
+    };
+
+    /* Los badges NO viven en el riel: viven en la columna derecha, apilados y
+       cada uno con el nombre de su categoría arriba. El riel conserva el nombre
+       y el punto — sí, el nombre queda escrito dos veces, y es una decisión
+       tomada a la vista de la alternativa (alinear cada badge con su fila del
+       riel, que obligaba a sincronizar alturas entre dos columnas).
+
+       El encabezado IMITA a `.filter-block-label` del plugin para que la
+       columna se lea continua — ahora literalmente, porque esta zona vive
+       adentro del mismo scroll que los bloques del plugin. Sigue siendo markup
+       nuestro: se copia el ESTILO, nunca un nodo. */
+    const renderApplied = (list: Applied[]): void => {
+      if (!appliedBar) return;
+      appliedBar.innerHTML = '';
+      badges.clear();
+      for (const item of list) {
+        const group = document.createElement('div');
+        group.className = 'ma-sheet__applied-group';
+        const label = labelFor(item.keys);
+        /* Sin label aprendido el badge va solo, sin encabezado. Nunca un
+           nombre inventado — la misma regla que en el riel. */
+        if (label !== null) {
+          const head = document.createElement('span');
+          head.className = 'ma-sheet__applied-label';
+          head.textContent = label;
+          group.appendChild(head);
+        }
+        group.appendChild(makeBadge(item));
+        appliedBar.appendChild(group);
+      }
+      appliedBar.hidden = list.length === 0;
     };
 
     const resetPending = (): void => {
@@ -315,6 +742,10 @@ const { surface = 'dark', view = 'list' } = Astro.props;
         const filled = sliceOwned(composed, ownedKeys(block)).size > 0;
         btn.toggleAttribute('data-ma-filled', filled);
       });
+      /* El destino de cada ✕ depende de lo pendiente, que cambia con cada
+         toque. Se recalcula acá en vez de en un handler de click para que el
+         `href` diga la verdad (abrir en pestaña nueva, copiar el link). */
+      for (const [badge, applied] of badges) badge.href = removalUrl(applied);
       if (clearBtn) clearBtn.hidden = wipeAll || (composed.size === 0 && baselineMa().size === 0);
     };
 
@@ -324,6 +755,10 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       const nth = getBlocks().indexOf(block as HTMLElement) + 1;
       if (nth === 0) return;
       const owned = ownedKeys(block);
+      /* Bloque de una sola opción que ya está aplicada: no controla ninguna key
+         que se pueda cambiar. Sin este guard se registraría un
+         `selections.set(nth, null)` fantasma. */
+      if (owned.size === 0) return;
       const tapped = sliceOwned(readMa(link.href), owned);
       const current = sliceOwned(compose(), owned);
       wipeAll = false;
@@ -341,22 +776,45 @@ const { surface = 'dark', view = 'list' } = Astro.props;
        tarda un frame de más en marcarse y el riel parpadea al toque. */
     const SPY_THRESHOLD = 12;
 
-    const activeCategoryForScroll = (panel: HTMLElement): number | null => {
-      const cats = categoryBlocks();
-      if (cats.length === 0) return null;
+    /* Las secciones a las que el riel puede apuntar, EN ORDEN VISUAL. Cada una
+       tiene un `token`: el `nth` del bloque para las categorías del plugin, y
+       `applied` para nuestra zona de filtros aplicados, que ahora vive
+       intercalada en el mismo scroll.
 
-      /* Forzar la última categoría al llegar al fondo: si mide poco (p.ej.
+       Se ordena por `offsetTop` y no por `nth`. Antes alcanzaba con el `nth`
+       porque el orden de los bloques coincidía con el visual; con un nodo
+       nuestro en el medio eso deja de estar garantizado, y ordenar por
+       geometría es lo que hace que el "último que cruzó el umbral" siga siendo
+       el que de verdad está arriba. De paso elimina esa suposición implícita.
+
+       Nuestra zona entra solo si está insertada y visible: sin filtros
+       aplicados va `hidden` y no es destino de nada. */
+    const spySections = (panel: HTMLElement): { token: string; el: HTMLElement }[] => {
+      const sections: { token: string; el: HTMLElement }[] = categoryBlocks().map(
+        ({ nth, block }) => ({ token: String(nth), el: block }),
+      );
+      if (appliedBar && appliedBar.parentElement === panel && !appliedBar.hidden) {
+        sections.push({ token: 'applied', el: appliedBar });
+      }
+      return sections.sort((a, b) => a.el.offsetTop - b.el.offsetTop);
+    };
+
+    const activeCategoryForScroll = (panel: HTMLElement): string | null => {
+      const sections = spySections(panel);
+      if (sections.length === 0) return null;
+
+      /* Forzar la última sección al llegar al fondo: si mide poco (p.ej.
          "Transmisión" con dos opciones) su `top` nunca cruza el umbral desde
          arriba y quedaría sin marcar nunca, aunque sea literalmente lo
          último que se ve. */
       if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2) {
-        return cats[cats.length - 1].nth;
+        return sections[sections.length - 1].token;
       }
 
-      let candidate = cats[0].nth;
-      for (const { nth, block } of cats) {
-        const marginTop = parseFloat(getComputedStyle(block).scrollMarginTop) || 0;
-        if (block.offsetTop - marginTop <= panel.scrollTop + SPY_THRESHOLD) candidate = nth;
+      let candidate = sections[0].token;
+      for (const { token, el } of sections) {
+        const marginTop = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+        if (el.offsetTop - marginTop <= panel.scrollTop + SPY_THRESHOLD) candidate = token;
       }
       return candidate;
     };
@@ -383,8 +841,8 @@ const { surface = 'dark', view = 'list' } = Astro.props;
           }
         }
 
-        const nth = activeCategoryForScroll(panel);
-        if (nth !== null && nth !== activeCat) paintCategory(nth);
+        const token = activeCategoryForScroll(panel);
+        if (token !== null && token !== activeCat) paintCategory(token);
       });
     };
 
@@ -394,10 +852,14 @@ const { surface = 'dark', view = 'list' } = Astro.props;
        si ya estaba visible. NO scrollea `#FilterContent` — eso es
        `scrollToCategory`, y separarlas es lo que permite que el scrollspy
        pinte sin generar un scroll en loop. */
-    const paintCategory = (nth: number): void => {
-      activeCat = nth;
+    const paintCategory = (token: string): void => {
+      activeCat = token;
       rail?.querySelectorAll<HTMLButtonElement>('.ma-sheet__rail-item').forEach((btn) => {
-        const isActive = btn.dataset.maCat === String(nth);
+        /* `data-ma-target` y no `data-ma-cat`: el target puede ser `applied`,
+           que no es un bloque del plugin y no tiene `nth`. `data-ma-cat` sigue
+           existiendo aparte, porque `paintPending()` lo usa para encontrar el
+           BLOQUE de esa fila. */
+        const isActive = btn.dataset.maTarget === token;
         btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         if (isActive) btn.scrollIntoView({ block: 'nearest' });
       });
@@ -410,14 +872,25 @@ const { surface = 'dark', view = 'list' } = Astro.props;
        acá no tiene un tope fijo como el slide de la hoja. */
     const SCROLL_SETTLE_FALLBACK_MS = 500;
 
+    /* El destino de una fila del riel. Un bloque del plugin cuando el token es
+       un `nth`, y nuestra zona de aplicados cuando es `applied` — que es lo que
+       vuelve navegables a las filas de categorías ya filtradas: el plugin sacó
+       su bloque del panel, pero su sección existe y está en el scroll. */
+    const targetElement = (token: string): HTMLElement | null => {
+      if (token === 'applied') {
+        return appliedBar && !appliedBar.hidden ? appliedBar : null;
+      }
+      return getBlocks()[Number(token) - 1] ?? null;
+    };
+
     /* Scrollea `#FilterContent` — el contenedor que de verdad scrollea, NO
-       el viewport — hasta el bloque `nth`. El offset resta
+       el viewport — hasta la sección del token. El offset resta
        `scroll-margin-top` (CSS, multiaviso.css) en vez de un número
        duplicado acá: una sola fuente de verdad para "cuánto aire" queda
-       arriba del bloque. */
-    const scrollToCategory = (nth: number): void => {
+       arriba de la sección. */
+    const scrollToCategory = (token: string): void => {
       const panel = document.getElementById('FilterContent');
-      const block = getBlocks()[nth - 1];
+      const block = targetElement(token);
       if (!panel || !block) return;
 
       const marginTop = parseFloat(getComputedStyle(block).scrollMarginTop) || 0;
@@ -436,14 +909,19 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     /* El click del riel hace las dos cosas; el scrollspy (`onPanelScroll`)
        solo pinta, nunca llama a esto — si lo hiciera, cada scroll disparado
        por el propio scrollspy relanzaría un `scrollTo`, y con eso un loop. */
-    const selectCategory = (nth: number): void => {
-      paintCategory(nth);
-      scrollToCategory(nth);
+    const selectCategory = (token: string): void => {
+      paintCategory(token);
+      scrollToCategory(token);
     };
 
     const buildRail = (): void => {
       if (!mq.matches || !rail) {
         rail && (rail.innerHTML = '');
+        /* La firma se va con el contenido que describe: si quedara, una llamada
+           posterior con las mismas categorías haría match y saltaría el
+           rebuild, dejando el riel vacío. */
+        if (rail) rail.dataset.sig = '';
+        renderApplied([]);
         activeCat = null;
         return;
       }
@@ -461,30 +939,156 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       }
 
       const entries = categoryBlocks();
-      if (entries.length === 0) {
+      const applied = appliedFilters();
+
+      /* Un filtro aplicado necesita fila SINTETIZADA solo si ninguna categoría
+         presente controla su key. Ese es el caso normal —el plugin saca del
+         panel la categoría ya filtrada—; cuando la categoría sigue ahí (el
+         orden, por ejemplo), ya tiene su fila y su punto, y duplicarla sería
+         listar dos veces lo mismo. Hasta la Session 16 este reparto también
+         decidía DÓNDE colgar el badge; ahora los badges van todos a la barra y
+         esto solo completa el índice. */
+      const orphans = applied.filter(
+        (item) =>
+          !entries.some(({ block }) => {
+            const owned = ownedKeys(block);
+            for (const key of item.keys) if (owned.has(key)) return true;
+            return false;
+          }),
+      );
+
+      if (entries.length === 0 && orphans.length === 0) {
         rail.innerHTML = '';
+        renderApplied([]);
+        rail.dataset.sig = '';
         return;
       }
 
-      const signature = entries.map(({ nth, label }) => `${nth}:${label}`).join('|');
+      /* La barra lleva TODOS los filtros aplicados, tenga o no su categoría una
+         fila en el riel, y en el orden en que viajan en la URL. El reparto
+         `claimed` / `orphans` ya no decide dónde va el badge —van todos a la
+         barra— sino solo si al riel le falta una fila para esa categoría. */
+      renderApplied(applied);
+      /* Antes de medir nada: la zona tiene que estar en su lugar adentro del
+         panel para que el scrollspy y los anclajes lean la geometría real. */
+      ensureAppliedNode();
+
+      /* ─── Orden del riel ──────────────────────────────────────────────────
+         El riel copia el orden de lo que se ve a la derecha, que ahora es un
+         solo scroll: bloque de orden, nuestras secciones de activas, el resto.
+
+         Este orden fue y vino: con la zona de aplicados como caja FIJA arriba,
+         lo visual era activas -> orden -> resto y el riel copiaba eso. Ahora
+         que la zona vive dentro del scroll, después del bloque de orden, el
+         riel vuelve a arrancar por "Ordenar vehículos". No fue criterio
+         inestable: cambió dónde vive la zona, y el riel siempre copió lo que se
+         ve.
+
+         El riel no sigue el orden de los bloques del panel, y eso es sano: cada
+         fila apunta a su sección con `data-ma-target` —el `nth` del bloque, o
+         `applied` para nuestra zona—, así que el scrollspy resuelve por
+         identidad de sección y no por posición en el riel. El highlight salta
+         de lugar al scrollear, pero siempre cae en la sección correcta. Y no
+         puede entrar en loop: `paintCategory` solo pinta y hace
+         `scrollIntoView` sobre el botón del RIEL — nunca scrollea
+         `#FilterContent`, que es lo que dispara el listener. */
+      const appliedKeys = new Set<string>();
+      for (const item of applied) for (const key of item.keys) appliedKeys.add(key);
+
+      /* El bloque de orden se identifica por su id (`.filter-block#Sort`,
+         §6.1) o por la key que controla. Nunca por el texto del label: esa es
+         la redacción del plugin y puede cambiar sin avisar. */
+      const sortEntry = entries.find(
+        (entry) => entry.block.id === 'Sort' || ownedKeys(entry.block).has('ma_sort'),
+      );
+      /* Una categoría aplicada que el plugin SIGUE ofreciendo. En la práctica
+         casi no ocurre —el plugin saca del panel la que ya está filtrada— pero
+         si ocurre, va con las aplicadas y no con el resto. */
+      const appliedEntries = entries.filter(
+        (entry) =>
+          entry !== sortEntry &&
+          [...ownedKeys(entry.block)].some((key) => appliedKeys.has(key)),
+      );
+      const restEntries = entries.filter(
+        (entry) => entry !== sortEntry && !appliedEntries.includes(entry),
+      );
+
+      /* La firma incluye los huérfanos —keys y label resuelto— además de las
+         categorías, en el MISMO orden en que se dibujan: si no, el riel no se
+         rearmaría cuando cambia el estado aplicado, cuando recién se aprende un
+         label, o cuando una categoría pasa de "resto" a "aplicada". Nada de
+         esto se indexa por `nth`, que se corre entre loads cuando un bloque
+         aparece o desaparece. */
+      const signature = [
+        sortEntry ? `>${sortEntry.nth}:${sortEntry.label}` : '',
+        ...orphans.map((item) => `!${[...item.keys].sort().join(',')}=${labelFor(item.keys) ?? ''}`),
+        ...appliedEntries.map(({ nth, label }) => `*${nth}:${label}`),
+        ...restEntries.map(({ nth, label }) => `${nth}:${label}`),
+      ].join('|');
+
+      const railButton = ({ nth, label }: { nth: number; label: string }): HTMLButtonElement => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ma-sheet__rail-item';
+        /* Dos atributos y no uno: `data-ma-target` es a qué sección scrollea
+           (lo usa el riel y el scrollspy) y `data-ma-cat` es qué BLOQUE del
+           plugin le corresponde (lo usa `paintPending` para el punto). Para las
+           filas de categorías ya filtradas hay target pero no hay bloque. */
+        btn.dataset.maTarget = String(nth);
+        btn.dataset.maCat = String(nth);
+        btn.textContent = label;
+        btn.addEventListener('click', () => selectCategory(String(nth)));
+        return btn;
+      };
+
       if (rail.dataset.sig !== signature) {
         rail.dataset.sig = signature;
         rail.innerHTML = '';
-        for (const { nth, label } of entries) {
+
+        /* El riel es una lista plana de botones, TODOS navegables. Las filas de
+           categorías que el plugin ya sacó del panel (`orphans`) volvieron a
+           ser botones ahora que tienen destino: su sección vive en nuestra zona
+           de aplicados, adentro del mismo scroll. Mientras la zona fue una caja
+           fija arriba no había a dónde ir y eran spans muertos. */
+        if (sortEntry) rail.appendChild(railButton(sortEntry));
+
+        for (const item of orphans) {
+          const label = labelFor(item.keys);
+          /* Sin label aprendido no hay fila. El riel es un índice de NOMBRES y
+             no puede indexar lo que no sabe nombrar. El filtro no se pierde: su
+             badge está en la zona de aplicados y se saca desde ahí. */
+          if (label === null) continue;
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'ma-sheet__rail-item';
-          btn.dataset.maCat = String(nth);
+          /* Target sí, `data-ma-cat` no: no hay bloque del plugin detrás de
+             esta fila. Todas las huérfanas apuntan a la misma sección, que es
+             la zona entera de aplicados. */
+          btn.dataset.maTarget = 'applied';
+          /* `data-ma-applied` y no `data-ma-filled`: `resetPending()` borra
+             todos los `[data-ma-filled]` del riel y `paintPending()` repinta
+             solo las filas con `data-ma-cat`, así que el punto de lo aplicado
+             se perdería en cada descarte. */
+          btn.setAttribute('data-ma-applied', '');
           btn.textContent = label;
-          btn.addEventListener('click', () => selectCategory(nth));
+          btn.addEventListener('click', () => selectCategory('applied'));
           rail.appendChild(btn);
         }
+
+        for (const entry of appliedEntries) rail.appendChild(railButton(entry));
+        for (const entry of restEntries) rail.appendChild(railButton(entry));
       }
 
-      /* Primera categoría siempre, no la última activa antes de cerrar: el
-         panel ya se reseteó a scrollTop 0 arriba, y el riel tiene que leer
-         igual. */
-      paintCategory(entries[0].nth);
+      /* Se pinta la primera categoría EN ORDEN DE BLOQUE, no la primera fila
+         del riel. Son cosas distintas desde que el riel se reordena: el panel
+         se acaba de resetear a `scrollTop = 0`, y ahí arriba se ve el bloque de
+         orden (el bloque 1 es `#Counts`, que no tiene label y no entra al
+         riel). Marcar la primera fila del riel —que puede ser una categoría
+         aplicada cuyo bloque está más abajo— diría una cosa mientras el panel
+         muestra otra, y el primer evento de scroll lo corregiría con un
+         parpadeo. Esto es exactamente lo que devuelve el scrollspy en
+         `scrollTop = 0`. */
+      if (entries.length > 0) paintCategory(String(entries[0].nth));
       paintPending();
     };
 
@@ -529,7 +1133,22 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       requestAnimationFrame(() => {
         queued = false;
         apply();
+        /* Acá y no en `buildRail`: el panel existe en el DOM apenas el plugin
+           inyecta su markup, aunque esté colapsado y aunque el viewport sea
+           desktop. Aprender en ese momento es lo que hace que el load
+           SIGUIENTE —el que ya no ofrece la categoría filtrada— tenga el
+           nombre.
+
+           Y ANTES del recuento: el agrupamiento de keys en categorías usa los
+           labels, así que con el cache frío un rango aplicado se contaría como
+           dos filtros en vez de uno. */
+        learnLabels();
         syncFilterCount();
+        /* Después de `apply()`: si la hoja acaba de abrirse, `buildRail()` ya
+           corrió y dejó el contenido; acá solo se verifica que el nodo siga en
+           su lugar dentro del panel. Idempotente, así que en régimen no hace
+           nada. */
+        ensureAppliedNode();
       });
     };
 
