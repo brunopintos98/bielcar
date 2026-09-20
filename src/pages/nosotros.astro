@@ -1,12 +1,27 @@
 ---
 import { Image } from 'astro:assets';
 import Base from '../layouts/Base.astro';
-import PageHero from '../components/PageHero.astro';
+import PhotoHero from '../components/PhotoHero.astro';
 import Button from '../components/Button.astro';
 import { site, SALES_BRANDS, SERVICE_BRANDS, PHOTOS, ABOUT_PARAGRAPHS, list } from '../data/site';
 
 /**
  * /nosotros — composición de §7, sin el bloque de equipo de ventas.
+ *
+ * ─── El hero lleva foto (bielcar-2), es una desviación de §5.2 ────────────
+ * §5.2 pide el hero plano ("Usar exactamente este patrón encima de cada
+ * página con Multiaviso") — pero /nosotros no tiene contenedor Multiaviso, así
+ * que no aplica el motivo del documento (colisión con la ficha de un vehículo
+ * puntual). Mismo caso ya resuelto y en producción en /service: ver el
+ * docblock de `PhotoHero.astro`, que ahora lista las dos páginas.
+ *
+ * `.sobre` se queda en `band--dark` sin pasar a `band--raised`: la corrida
+ * hero→sobre→Footer en `#0D0D0D` YA existía idéntica con el hero plano
+ * anterior (`PageHero` también era `--surface-dark` sin gradiente) y es el
+ * mismo patrón que ya tiene /contacto. El degradado de `PhotoHero` converge a
+ * un negro casi opaco sobre foto oscurecida (`brightness(0.6)`) — mismo
+ * mecanismo ya verificado en la costura idéntica de /service (PhotoHero →
+ * ServiceBrands, también #0D0D0D).
  *
  * ─── El texto institucional ya llegó ───────────────────────────────────────
  * Lo escribió Sebastián y vive en `ABOUT_PARAGRAPHS` (site.ts). Vale la pena
@@ -38,7 +53,8 @@ const serviceBrands = list(SERVICE_BRANDS);
   title="Nosotros"
   description={`Bielcar Automóviles, automotora en ${site.address}. Venta de 0km y usados, servicio oficial ${serviceBrands}, taller multimarca y permuta.`}
 >
-  <PageHero
+  <PhotoHero
+    image={PHOTOS.aboutHero}
     title="Nosotros"
     lede="Automotora, taller multimarca y servicio oficial, en un mismo lugar."
   />

@@ -795,3 +795,54 @@ Se elimina de `/nosotros` la `<section class="equipo band band--raised">` comple
 - `npm run deploy` NO se corrió: el cambio no toca el catálogo ni nada dentro de `#MultiavisoWrapper`, así que no hay nada que solo se pueda verificar en `bielcar.vercel.app`.
 - `grep -rn "atienden\|vendedor\|Placeholder" README.md documentation/DESIGN.md` tras el cambio: las únicas coincidencias que quedan son de otros temas (el `<Placeholder>` de `waLink()` en README:72, el del carrusel de destacados en README:224, y la nota de tasación de DESIGN:364). Cero referencias remanentes al bloque de equipo.
 - `grep -n "nosotros" documentation/DESIGN.md`: las menciones que quedan son sobre `--radius-md` para la foto del local, el botón fantasma, la banda oscura y la fila de "Fotos del local" en la tabla de activos faltantes — ninguna asume el bloque de equipo.
+
+---
+
+## Session 13 — web-feature on `site` (started 2026-09-20T21:15:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-20T21:15:00Z
+session_ended_utc: 2026-09-20T21:45:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/data/site.ts
+  - src/components/PhotoHero.astro
+  - src/pages/nosotros.astro
+```
+
+### 1. Initial approved PLAN — 2026-09-20T21:30:00Z
+
+**Pedido:** "para la parte de /nosotros podemos poner un banner igual al de taller? pero con la imagen de home? o sea corto arriba solo donde dice el titulo y 'Automotora, taller multimarca y servicio oficial, en un mismo lugar.' pero usemos la imagen src/assets/local/bielcar-2.webp". El usuario ya sabía que `bielcar-2.webp` NO es la foto del Home (esa es `bielcar-1`) y pidió igual `bielcar-2` por el path explícito.
+
+**PLAN presentado (verbatim):**
+
+a) `src/data/site.ts` — agregar `aboutHero: Photo;` al type literal de `PHOTOS` y la entrada `aboutHero: { src: local2, alt: '...' }` al objeto; reescribir el comentario de `aboutLocal` que decía "queda una tercera, bielcar-2, sin usar". El `alt` se escribió DESPUÉS de ver el archivo con la herramienta de lectura de imágenes (1360×1020, 4:3): muestra la entrada de un sector distinto del local con vidriera hacia el taller, cartel "PPG"/"Paint Works" visible y autos adentro — confirma el comentario preexistente ("el lado de chapa y pintura"). El alt describe solo eso, sin afirmar servicios ni personas no visibles.
+
+b) `src/components/PhotoHero.astro` — solo docblock: agregar `/nosotros` a la lista de páginas que usan esta desviación de §5.2, mismo motivo que `/service` (sin contenedor Multiaviso, sin riesgo de choque con la ficha de un vehículo puntual). Sin cambios de `Props`, markup ni CSS.
+
+c) `src/pages/nosotros.astro` — swap de import `PageHero` → `PhotoHero`; `<PhotoHero image={PHOTOS.aboutHero} title="Nosotros" lede="Automotora, taller multimarca y servicio oficial, en un mismo lugar." />` (mismo copy exacto, sin cambio de texto); reescritura del comentario de cabecera documentando el swap y por qué `.sobre` NO cambia de banda.
+
+d) `.claude/change-log/branch-main.md` — este append.
+
+**Comandos:** `npm run check` (typecheck). Sin lint/unit_test (no configurados). Verificación visual con `npm run dev` — permitido explícitamente porque `/nosotros` no tiene Multiaviso.
+
+**Contratos producidos:** n/a. **Contratos consumidos:** n/a.
+
+**g) Alternativa más fuerte considerada:** pasar `.sobre` a `band--raised` preventivamente para airear la monotonía que introduce la foto arriba — descartada porque la corrida de bandas oscuras hero→sobre→footer (todas `#0D0D0D`) ya existía idéntica antes de este cambio (el `PageHero` anterior también era `--surface-dark` plano) y es el mismo patrón ya aceptado en `/contacto` (ver sesión 12); sería un restyle no pedido de algo preexistente.
+
+**h) Supuesto que carga el peso:** el gradiente fijo de `PhotoHero` (`rgba(0,0,0,.75) → transparent 60%` sobre foto con `brightness(0.6)`) converge lo bastante cerca de `--surface-dark` (`#0D0D0D`) en su borde inferior como para que la costura contra `.sobre` (mismo `#0D0D0D` plano) se lea continua — igual que la costura ya verificada en producción en `/service` (PhotoHero → ServiceBrands, también `#0D0D0D`).
+
+**i) Observación que lo falsificaría:** ver en `npm run dev` una línea o banding dura en la costura hero→`.sobre`, a diferencia de la costura ya conocida y aceptada en `/service`.
+
+**Aprobación:** "proceed — el usuario aprobó el PLAN tal como lo presentaste, sin cambios."
+
+### 2. Verification — 2026-09-20T21:44:00Z
+
+- `npm run check` → `astro check`: **0 errors, 0 warnings, 0 hints**. El hint preexistente de `local2` sin usar desapareció, tal como se esperaba al consumirlo desde `PHOTOS.aboutHero`.
+- `npm run dev` levantado en background; se abrió `http://localhost:4321/nosotros` con Chrome en modo headless (`--headless --screenshot`, 1400×900) para inspeccionar la costura hero→`.sobre` a simple vista, ya que esta página no depende de Multiaviso y se ve completa en local.
+- Resultado visual: el hero muestra la foto de `bielcar-2` (fachada del sector de chapa y pintura) con el degradado oscuro y el h1 "Nosotros" + la bajada legibles sobre él. La costura contra `.sobre` (banda `band--dark`) **se lee continua, sin línea ni banding perceptible** — el supuesto (h) se sostiene, igual que en la costura ya conocida de `/service`. No se observó la condición falsificadora (i).
+- `.sobre` se dejó en `band band--dark` sin cambios, como quedó planteado en el PLAN.
+

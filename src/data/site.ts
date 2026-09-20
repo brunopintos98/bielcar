@@ -484,6 +484,8 @@ export interface Photo {
 export const PHOTOS: {
   /** Hero del Home. Ya NO es nullable: las fotos del local llegaron. */
   homeHero: Photo;
+  /** Hero de /nosotros. Tercera toma del local, distinta de homeHero y aboutLocal. */
+  aboutHero: Photo;
   /** Split de /nosotros. Otra toma, para no repetir la misma foto en el sitio. */
   aboutLocal: Photo;
   /* `w` y `h` son las medidas REALES del archivo. Van al <img> para reservar
@@ -507,14 +509,28 @@ export const PHOTOS: {
   homeHero: { src: local1, alt: 'Frente de Bielcar Automóviles en La Paz 2028, Montevideo' },
 
   /**
-   * La fachada completa en ángulo. Va en /nosotros, donde el contenedor es 4:3
-   * — el mismo aspecto que el archivo, o sea que entra ENTERA, sin recorte.
+   * `bielcar-2`: la entrada del sector de chapa y pintura, con la vidriera
+   * hacia el taller (se ve el cartel "PPG"/"Paint Works" y autos adentro).
+   * Va en el hero de /nosotros (`PhotoHero`, full-bleed, recorte fuerte en
+   * vertical) — misma lógica de recorte que `homeHero` en el hero del Home,
+   * ambas partiendo de un archivo 4:3.
    *
-   * Es una toma distinta a la del Home a propósito: son las dos únicas fotos
-   * grandes del local en el sitio y repetir la misma se nota.
+   * El `alt` describe solo lo que se ve en la foto: NO afirma qué se hace ahí
+   * más allá de lo legible en la vidriera (regla del proyecto de no inventar
+   * datos — ver la nota de cabecera del archivo).
+   */
+  aboutHero: {
+    src: local2,
+    alt: 'Fachada del sector de chapa y pintura de Bielcar Automóviles, en La Paz 2028, Montevideo',
+  },
+
+  /**
+   * La fachada completa en ángulo. Va en el split de /nosotros, donde el
+   * contenedor es 4:3 — el mismo aspecto que el archivo, o sea que entra
+   * ENTERA, sin recorte.
    *
-   * (Queda una tercera, `bielcar-2`, sin usar: muestra el lado de chapa y
-   * pintura. Sirve el día que /service o /nosotros necesiten una foto propia.)
+   * Es una toma distinta a las otras dos a propósito: son las tres únicas
+   * fotos grandes del local en el sitio y repetir la misma se nota.
    */
   aboutLocal: { src: local3, alt: 'Fachada de Bielcar Automóviles en La Paz 2028, Montevideo' },
 

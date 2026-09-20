@@ -22,7 +22,9 @@ import type { Photo } from '../data/site';
  * Geely va a tener una Honda CR-V grande encima. Es el motivo por
  * el que el documento pide el hero plano en esas tres rutas.
  *
- * En /service no aplica: esa página no tiene contenedor de Multiaviso.
+ * En /service no aplica: esa página no tiene contenedor de Multiaviso. Mismo
+ * motivo por el que se usa también en /nosotros: tampoco tiene catálogo, así
+ * que no hay ficha de vehículo con la que este componente pueda chocar.
  *
  * Si esto molesta en producción, la vuelta atrás es cambiar `<PhotoHero>` por
  * `<PageHero>` en las tres páginas de catálogo — el componente sin foto sigue
