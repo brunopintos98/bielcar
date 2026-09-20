@@ -569,7 +569,7 @@ Multiaviso.initialize({
                  Banda de permuta (§5.10)
 
 /service         Hero + marcas oficiales + qué incluye + formulario que arma link wa.me
-/nosotros        Hero + split imagen/texto + equipo de ventas
+/nosotros        Hero + split imagen/texto
 /contacto        Split formulario / datos + mapa
 ```
 

@@ -153,7 +153,7 @@ meses sin que nadie lo note.
 | 2 | Catálogo (`/nuevos`, `/usados`, `/vehiculos`) + overrides del plugin | ✅ verificado en producción |
 | 3 | Home (hero, accesos, carrusel, servicios, CTA) | ⚠️ ver carrusel abajo |
 | 4 | `/service` | ✅ |
-| 5 | `/contacto` y `/nosotros` | ⚠️ falta el equipo de ventas |
+| 5 | `/contacto` y `/nosotros` | ✅ |
 | 6 | SEO (OG, Twitter, JSON-LD, sitemap, robots) | ⚠️ faltan los 301 |
 | 7 | Mobile y performance | ✅ |
 
@@ -172,8 +172,6 @@ Sobre el catálogo, dos cosas que conviene saber de entrada porque desvían de
 
 ### De Sebastián (cliente)
 
-- [ ] **Equipo de ventas** (nombres, roles y fotos). Es el **único `<Placeholder>` que
-      renderiza en todo el sitio**, en `/nosotros`.
 - [ ] **Confirmar dos promesas del texto de service.** No son descripciones, son
       compromisos: *"manteniendo la garantía vigente"* y *"nunca hacemos nada sin tu
       aprobación"*. Son estándar en un servicio oficial y por eso quedaron, pero si el

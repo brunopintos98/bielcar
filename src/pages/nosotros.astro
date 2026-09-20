@@ -3,11 +3,10 @@ import { Image } from 'astro:assets';
 import Base from '../layouts/Base.astro';
 import PageHero from '../components/PageHero.astro';
 import Button from '../components/Button.astro';
-import Placeholder from '../components/Placeholder.astro';
 import { site, SALES_BRANDS, SERVICE_BRANDS, PHOTOS, ABOUT_PARAGRAPHS, list } from '../data/site';
 
 /**
- * /nosotros — composición de §7: "Hero + split imagen/texto + equipo de ventas".
+ * /nosotros — composición de §7, sin el bloque de equipo de ventas.
  *
  * ─── El texto institucional ya llegó ───────────────────────────────────────
  * Lo escribió Sebastián y vive en `ABOUT_PARAGRAPHS` (site.ts). Vale la pena
@@ -17,12 +16,18 @@ import { site, SALES_BRANDS, SERVICE_BRANDS, PHOTOS, ABOUT_PARAGRAPHS, list } fr
  * "Nosotros" es donde más tienta inventar, y por eso fue la última en
  * llenarse.
  *
- * La foto del local ya llegó. Sigue faltando el equipo de ventas, con
- * <Placeholder>. El resto se afirma desde `site.ts`: dónde está el local, qué
- * marcas vende, de cuáles es servicio oficial y qué hace el taller.
+ * La foto del local ya llegó. El resto se afirma desde `site.ts`: dónde está
+ * el local, qué marcas vende, de cuáles es servicio oficial y qué hace el
+ * taller.
  *
- * La estructura queda completa igual: el día que llegue el contenido es
- * rellenar, no construir.
+ * ─── El bloque de equipo de ventas se sacó ────────────────────────────────
+ * DESIGN.md §7 lo pedía ("Quiénes lo atienden", grilla de vendedores) y acá
+ * vivió un tiempo como <Placeholder> esperando nombres, roles y fotos. El
+ * cliente decidió NO hacerlo por ahora, así que la sección se eliminó entera
+ * en vez de dejar el placeholder puesto: un pendiente visible tiene sentido
+ * mientras el contenido está en camino, no cuando la decisión fue no tenerlo.
+ * Si se retoma, es volver a agregar una <section class="equipo"> — el resto de
+ * la página no la asume desde ningún lado.
  */
 const media = PHOTOS.aboutLocal;
 const salesBrands = list(SALES_BRANDS);
@@ -88,30 +93,6 @@ const serviceBrands = list(SERVICE_BRANDS);
       </div>
     </div>
   </section>
-
-  <section class="equipo band band--raised">
-    <div class="container">
-      {/* `data-reveal` va SOLO acá adentro — el <Placeholder> de abajo queda
-          deliberadamente afuera de cualquier reveal. No es el fail-safe
-          general (ese cubre "JS bloqueado"): es la regla explícita del
-          proyecto de que este placeholder en particular nunca dependa de
-          nada para verse, ni siquiera de un scroll. */}
-      <div data-reveal>
-        <p class="eyebrow">Equipo</p>
-        <h2 class="h2 equipo__title">Quiénes lo atienden.</h2>
-        <p class="lede equipo__lede">
-          La grilla de vendedores va acá, con nombre, rol y contacto directo.
-        </p>
-      </div>
-
-      {/* Un solo <Placeholder> y no una grilla de tarjetas vacías: no sabemos
-          ni los nombres ni CUÁNTOS son, así que dibujar tres huecos ya sería
-          afirmar un número. */}
-      <p class="equipo__missing">
-        <Placeholder what="equipo de ventas (nombres, roles y fotos)" from="Sebastián" />
-      </p>
-    </div>
-  </section>
 </Base>
 
 <style>
@@ -163,18 +144,6 @@ const serviceBrands = list(SERVICE_BRANDS);
     flex-wrap: wrap;
     gap: var(--space-4);
     margin-top: var(--space-12);
-  }
-
-  .equipo__title {
-    margin-top: var(--space-3);
-  }
-
-  .equipo__lede {
-    margin-top: var(--space-6);
-  }
-
-  .equipo__missing {
-    margin-top: var(--space-8);
   }
 
   @media (max-width: 899px) {

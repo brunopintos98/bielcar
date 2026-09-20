@@ -760,3 +760,38 @@ files_written:
   - `.catalog #MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share > svg`
   - `.catalog #MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share:hover` / `:active`
   - Fuera del media query no queda ninguna regla del bloque `#Share` — todo el bloque vive adentro.
+
+---
+
+## Session 12 — web-feature on `site` (started 2026-09-20T18:15:00Z)
+
+**Pedido:** "saca de la sección de nosotros la parte de quiénes lo atienden, porque ahora no lo vamos a hacer todavía".
+
+### 1. Decisión
+
+Se elimina de `/nosotros` la `<section class="equipo band band--raised">` completa — eyebrow "Equipo", `<h2>` "Quiénes lo atienden.", la lede "La grilla de vendedores va acá..." y el `<Placeholder what="equipo de ventas (nombres, roles y fotos)" from="Sebastián" />`.
+
+**a) Archivos tocados:**
+- `src/pages/nosotros.astro` — se borra la sección (markup), las reglas scoped `.equipo__title` / `.equipo__lede` / `.equipo__missing`, y el import de `Placeholder` (queda sin uso: lo levantaría `astro check`). Se reescribe el comentario de cabecera del frontmatter, que describía la página como "Hero + split imagen/texto + equipo de ventas" y decía "Sigue faltando el equipo de ventas, con `<Placeholder>`" — ahora documenta la decisión de no hacerlo.
+- `documentation/DESIGN.md:572` — mapa de composición por página: `/nosotros  Hero + split imagen/texto + equipo de ventas` → `/nosotros  Hero + split imagen/texto`.
+- `README.md` — tabla de Estado, fila 5 (`/contacto` y `/nosotros`): `⚠️ falta el equipo de ventas` → `✅`. Se saca también el ítem "Equipo de ventas (nombres, roles y fotos)" de Pendientes de Sebastián.
+
+**b) Contradicción con el contrato, planteada y aprobada:** `DESIGN.md` §7 pedía explícitamente el bloque de equipo. Por la regla de CLAUDE.md ("si una tarea contradice el documento, decilo en vez de elegir por tu cuenta"), se planteó al usuario antes de escribir y se aprobó actualizar la línea 572 en vez de editar en silencio. El documento sigue siendo el contrato: se cambió el contrato, no se lo ignoró.
+
+**c) Se elimina, no se esconde.** Nada de `display: none` ni de comentar el markup. Si el equipo vuelve, vuelve desde git — un bloque muerto comentado en el archivo es deuda que nadie audita.
+
+**d) El sitio pasa a tener CERO `<Placeholder>` renderizados.** Este era el único. La regla de "no inventar datos" no se relaja: el placeholder se va porque se va la sección entera que lo justificaba, no porque se haya rellenado con nombres o roles plausibles. `Placeholder.astro` y el resto del mecanismo quedan intactos.
+
+**e) Alternativa más fuerte considerada:** dejar la sección y sacar solo el `<Placeholder>`. Se descartó porque el resultado sería un `<h2>` "Quiénes lo atienden." seguido de una lede que promete "la grilla de vendedores va acá" y después nada — una promesa incumplida en la página pública es peor que no tener la sección. La segunda alternativa, dejar el placeholder y marcar el pendiente como "pospuesto" en README, se ofreció al usuario y no la eligió: el pedido fue sacarlo.
+
+**f) Supuesto que carga el peso:** "no lo vamos a hacer todavía" significa que el bloque sale del sitio ahora y el pendiente se cierra en `README.md` / `DESIGN.md`, en vez de quedar registrado como bloqueado esperando contenido de Sebastián. Se explicitó al usuario antes de escribir.
+
+**g) Observación que falsificaría el enfoque:** que algo fuera de la página dependiera de la sección — un anchor `#equipo`, un link de nav, constantes de vendedores en `src/data/site.ts`, o que `band--raised` fuera necesaria para la alternancia de bandas. Verificado: no hay ninguna de esas dependencias; los estilos son `<style>` scoped de Astro y mueren con el markup. Sobre la alternancia: `/nosotros` queda cerrando en `band--dark` justo antes del footer, que también es `--surface-dark` — el mismo patrón que ya tiene `/contacto` (`src/pages/contacto.astro:89` es su última banda y también es `band--dark`), así que no es una situación nueva en el sitio.
+
+### 2. Verification — 2026-09-20T18:21:00Z
+
+- `npm run check` → `astro check`: **0 errors, 0 warnings, 1 hint**. El hint es el preexistente `local2` sin usar en `src/data/site.ts`, sin relación con este cambio. Confirma en particular que no quedó ningún import huérfano.
+- `npm run build` → **7 page(s) built**, sin errores.
+- `npm run deploy` NO se corrió: el cambio no toca el catálogo ni nada dentro de `#MultiavisoWrapper`, así que no hay nada que solo se pueda verificar en `bielcar.vercel.app`.
+- `grep -rn "atienden\|vendedor\|Placeholder" README.md documentation/DESIGN.md` tras el cambio: las únicas coincidencias que quedan son de otros temas (el `<Placeholder>` de `waLink()` en README:72, el del carrusel de destacados en README:224, y la nota de tasación de DESIGN:364). Cero referencias remanentes al bloque de equipo.
+- `grep -n "nosotros" documentation/DESIGN.md`: las menciones que quedan son sobre `--radius-md` para la foto del local, el botón fantasma, la banda oscura y la fila de "Fotos del local" en la tabla de activos faltantes — ninguna asume el bloque de equipo.
