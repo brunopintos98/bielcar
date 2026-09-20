@@ -864,37 +864,46 @@
     text-align: left;
   }
 
-  /* ─── Riel de categorías (§8) ────────────────────────────────────────────
+  /* ─── Filtros: scroll continuo con índice lateral (§8) ───────────────────
      Los hijos de `#FilterContent` son TODOS `.filter-block` hermanos directos
-     (verificado en producción). El bloque 1 es `#Counts`; los demás se ocultan
-     y solo se muestra el activo vía `html[data-ma-cat]`. Esto NO pelea con
-     "Más opciones": `.hidden` cae sobre `.filter-block-item`, no sobre el
-     bloque entero. */
+     (verificado en producción). El bloque 1 es `#Counts`, no tiene
+     `.filter-block-label` y por eso no entra al riel — pero SÍ cuenta para
+     los índices `nth` que arma el script (ver MultiavisoCatalog.astro).
+
+     Esto reemplaza el master-detail que hubo acá: mostrar un bloque por vez
+     con `html[data-ma-cat='N'] … :nth-child(N)`, una regla por número y un
+     tope duro de 12 categorías (el que impone escribir la lista a mano). Los
+     ocho bloques quedan apilados y visibles a la vez; el riel deja de ser un
+     selector de visibilidad para ser un ÍNDICE — ancla con scroll suave hacia
+     abajo, scrollspy hacia arriba. Nada de esto pelea con "Más opciones":
+     `.hidden` cae sobre `.filter-block-item`, no sobre el bloque entero. */
   .catalog #MultiavisoWrapper #FilterContent > .filter-block {
-    display: none;
+    display: flex;
+    /* Que el bloque no quede pegado al borde superior del panel al llegar
+       por scroll — programático (riel) o del sistema (buscar en página). El
+       script lee este valor con `getComputedStyle` para calcular el
+       `scrollTo`: una sola fuente de verdad para el offset, no un número
+       duplicado en el `<script>`. */
+    scroll-margin-top: var(--space-4);
   }
 
   .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(1) {
     display: block;
   }
 
-  html[data-ma-cat='2'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(2),
-  html[data-ma-cat='3'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(3),
-  html[data-ma-cat='4'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(4),
-  html[data-ma-cat='5'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(5),
-  html[data-ma-cat='6'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(6),
-  html[data-ma-cat='7'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(7),
-  html[data-ma-cat='8'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(8),
-  html[data-ma-cat='9'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(9),
-  html[data-ma-cat='10'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(10),
-  html[data-ma-cat='11'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(11),
-  html[data-ma-cat='12'] .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(12) {
-    display: flex;
-  }
-
-  /* El riel ya muestra la categoría activa; el label del bloque sobra. */
+  /* El label vuelve a estar visible: en el master-detail era redundante (el
+     riel YA mostraba cuál era la categoría activa); en el scroll continuo es
+     el ÚNICO encabezado de sección que hay, así que tiene que leerse como
+     tal. El tamaño/peso/mayúsculas ya vienen de la regla base (§7); acá solo
+     se agrega separación y un filete para que el ojo pare entre una sección
+     y la siguiente en vez de leerlas corridas. Filete ARRIBA del label y no
+     abajo del bloque anterior: cada `.filter-block` ya cierra con su propio
+     `border-bottom` (§7), y ponerlo también abajo duplicaría la línea entre
+     dos secciones contiguas. */
   .catalog #MultiavisoWrapper #FilterContent > .filter-block:nth-child(n + 2) .filter-block-label {
-    display: none;
+    margin-top: var(--space-2);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--ma-rule);
   }
 
   /* ─── Tap targets de la hoja ─────────────────────────────────────────────
@@ -1245,7 +1254,12 @@
          #ItemStatus > img                  estrellas
          .contact-item                      #ContactAddress/#ContactPhone/#ContactSchedule
          a#ContactNow                       ← el CTA
-         #Share
+         #Share                           ShareThis (script 3° embebido por
+                                           Multiaviso, no markup propio del
+                                           plugin) — estructura real y estado
+                                           mobile verificados con devtools en
+                                           producción, ver nota junto a las
+                                           reglas de #Share más abajo
        #SpecsContainer > .specs
          .specs-title / .specs-content
          .spec-column > .spec-general > .spec-label + .spec-value
@@ -1342,6 +1356,245 @@
   background: var(--whatsapp-hover);
   border-color: var(--whatsapp-hover);
   color: #fff;
+}
+
+/* #Share — capturado con devtools en producción (DOM real, no especulación):
+
+     #Share.mobile-share-enabled
+       label                                  "Compartir"
+       .sharethis-inline-share-buttons#st-1    widget de ShareThis, script 3°
+                                                embebido por Multiaviso — NO es
+                                                markup propio del plugin, pero
+                                                aplica la misma regla del
+                                                proyecto: se restila con CSS,
+                                                nunca se toca con JS
+         .st-btn[data-network=facebook|twitter|whatsapp|copy]
+                                                en mobile llegan con
+                                                `style="display: none"` INLINE
+                                                puesto por el propio widget —
+                                                no hay panel de redes propio
+                                                que restilar en este viewport
+         div.st-btn.mobile-share[data-network=mobile-share]
+                                                el único visible en mobile;
+                                                dispara la hoja de compartir
+                                                NATIVA del sistema (Web Share
+                                                API), no un menú de ShareThis.
+                                                Es UN SOLO nodo con las dos
+                                                clases `st-btn` Y `mobile-share`
+                                                — no un wrapper alrededor de
+                                                `.st-btn`, así que cualquier
+                                                selector del plugin que apunte
+                                                a `div.mobile-share` está
+                                                pisando exactamente este botón.
+           svg[viewBox="0 0 50 50"] path[fill=currentColor]
+                                                ícono vectorial inline — se
+                                                controla entero con `color`,
+                                                sin máscara ni reemplazo de nodo
+
+   Los 4 `.st-btn` de red (hoy ocultos en mobile) llevan `<img>` de marca de
+   ShareThis, no `currentColor` — si en algún viewport/config del plugin
+   llegan a mostrarse, no asumir que heredan la tinta de `color`.
+
+   ─── Por qué la cadena de acá abajo es tan larga ──────────────────────────
+
+   La sesión anterior escribió `.catalog #MultiavisoWrapper .st-btn` para el
+   fondo/borde del botón y perdió: el fondo gris seguía ahí en producción.
+   La regla culpable, leída de la hoja pública del plugin
+   (https://automotora.multiaviso.com/Styles/plugin-style.css?v=7, dentro de
+   `@media (max-width: 767px)`):
+
+     #MultiavisoWrapper #Share.mobile-share-enabled
+       > .sharethis-inline-share-buttons > div.mobile-share
+       { background: #dfdfdf; margin-top: -6px; margin-left: 10px; height: 35px; }
+
+   DOS ids (`#MultiavisoWrapper`, `#Share`) + TRES clases
+   (`mobile-share-enabled`, `sharethis-inline-share-buttons`, `mobile-share`)
+   + un elemento (`div`) = (0,2,3,1). La nuestra, `.catalog #MultiavisoWrapper
+   .st-btn`, tenía UN solo id: (0,1,2,0). Perdíamos por ID — el mismo empate
+   que documenta la nota de `#SpecsContact` más abajo, no por clase. Ganar
+   por especificidad exige repetir la cadena EXACTA del plugin con `.catalog`
+   adelante (regla mecánica de la cabecera del archivo): eso da (0,2,4,1),
+   gana limpio, sin `!important`.
+
+   Se grepeó el resto de `plugin-style.css` buscando más trampas de dos ids
+   en esta zona antes de dar el arreglo por terminado — no vale asumir que
+   era solo el fondo:
+
+     #MultiavisoWrapper #Share                                              (0,2,0,0)
+     #MultiavisoWrapper #Share > label                                      (0,2,0,1)
+     #MultiavisoWrapper #Share.mobile-share-enabled              @767px     (0,2,1,0)
+     #MultiavisoWrapper #Share.mobile-share-enabled > label      @767px     (0,2,1,1)
+     #MultiavisoWrapper #Share.mobile-share-enabled
+       > .sharethis-inline-share-buttons                         @767px    (0,2,2,0)
+     #MultiavisoWrapper #Share.mobile-share-enabled
+       > .sharethis-inline-share-buttons > div.mobile-share       @767px   (0,2,3,1)
+
+   La del `label` en mobile, (0,2,1,1), EMPATABA con la regla de la sesión
+   anterior (`.catalog #MultiavisoWrapper #Share label`, también (0,2,1,1) —
+   dos ids + `.catalog` + el elemento `label`). En un empate gana el que
+   carga último, que es el plugin: el `display: block` que apilaba
+   "Compartir" arriba del botón nunca ganó en producción. No se notaba porque
+   el síntoma visible era el fondo gris, no el layout. Se sube a la misma
+   cadena larga más abajo.
+
+   No hay NINGUNA regla `:hover` / `:active` / `:focus` para `#Share`,
+   `.st-btn` ni `div.mobile-share` en `plugin-style.css` (se grepeó el
+   archivo entero: los únicos `:hover` del plugin son para `#List .item`,
+   `#Pagination`, `#ContactNow`, `#FiltersTitle`, `#SortPopupInner`, etc. —
+   ninguno toca esta zona). El riesgo real de hover sigue siendo el widget de
+   ShareThis en sí (script de terceros ajeno a esta hoja) escribiendo inline
+   vía JS — ver la nota más abajo, que sigue en pie. Por las dudas la regla
+   de hover de acá abajo usa la MISMA cadena larga que la base, no la corta:
+   si el plugin algún día agrega un hover con dos ids, ya está cubierto sin
+   tener que volver a tocar esto. */
+/* REGRESIÓN (esta sesión): las reglas de acá abajo vivían SIN media query, o
+   sea a nivel global — y varias apuntaban a `.st-btn` genérico. `.st-btn` son
+   los CINCO botones: los cuatro de red (Facebook/X/WhatsApp/copiar link) MÁS
+   el nativo. En desktop, donde los cuatro de red son los visibles, les
+   estábamos aplicando `width/height: 46px`, `background: transparent`,
+   `border: 1px solid var(--ma-rule)` y `svg { width/height: 20px }` encima de
+   botones que traen su propio fondo de marca y su propio ícono — eso es lo
+   que se vio roto. El arreglo tiene DOS partes, y hace falta la mitad que no
+   es el media query:
+
+   1. Alcance por SELECTOR: ninguna regla de acá abajo toca `.st-btn`
+      genérico. Los cuatro botones de red no se estilan en NINGÚN viewport —
+      se ven bien como los sirve ShareThis y no fueron parte de ningún
+      pedido. Todo cuelga de la cadena puntual a `div.mobile-share`, que es
+      un solo nodo con las clases `st-btn` Y `mobile-share` (ver la nota de
+      la cabecera), nunca de `.st-btn` suelto.
+
+      Esto importa AUNQUE el bloque esté en un `@media (max-width: 767px)`:
+      el `display: none` que oculta los cuatro botones de red es un estilo
+      INLINE que escribe el JS de ShareThis según si el dispositivo soporta
+      Web Share API (`navigator.share`), NO según el ancho de la ventana. Un
+      desktop con la ventana angosta puede entrar en este mismo rango de
+      media query y seguir mostrando los cuatro botones de red — por eso el
+      acote por selector hace falta además del media query, no en su lugar.
+
+   2. Alcance por MEDIA QUERY: todo el bloque entra en
+      `@media (max-width: 767px)`, espejando EXACTO el rango de la regla del
+      plugin que estamos pisando —
+      `#MultiavisoWrapper #Share.mobile-share-enabled >
+      .sharethis-inline-share-buttons > div.mobile-share`, que vive en
+      `@media (max-width: 767px)` de `plugin-style.css` (ver la tabla de
+      arriba).
+
+      767 y NO el 699 del resto del archivo, a propósito. El 699 de §8 existe
+      para complementar el `min-width: 700px` que el plugin usa para
+      `#FilterContent`, sin hueco ni solapamiento entre los dos — pero la
+      regla de `#Share` del plugin usa 767, un rango distinto. Si
+      contra-atacáramos con 699 quedaría una franja de 700–767px donde el
+      plugin sigue pintando su `background: #dfdfdf` en `div.mobile-share` y
+      esta hoja ya no lo contrarresta. No es un tercer breakpoint de diseño:
+      es el rango de la regla ajena que se está pisando, y por eso empata con
+      ella y no con la escala del proyecto. Que el próximo que lea esto no lo
+      "corrija" a 699 sin leer este párrafo primero.
+
+      El container (`#Share.mobile-share-enabled`) y el `label` entran acá
+      también, no solo los botones: su layout en flex (`justify-content:
+      flex-end`, el `gap`) está pensado para el patrón mobile de "label +
+      un solo botón nativo" — el propio comentario de la regla lo ata al
+      `margin-left: 10px` que el plugin solo pone dentro de este mismo
+      `@media 767`. Fuera de mobile, el plugin ya resuelve el layout solo con
+      sus reglas base sin media query — `#Share { margin-top: 20px; height:
+      27px }`, `#Share > label { float: left; width: 61px }`, `#Share >
+      .sharethis-inline-share-buttons { float: left }` (ver la tabla de
+      arriba) — y no hay pedido de tocarlo. */
+@media (max-width: 767px) {
+  .catalog #MultiavisoWrapper #Share.mobile-share-enabled {
+    /* Layout nativo del widget: "Compartir" a la izquierda, botón a la
+       derecha, en la misma línea, alineado a la derecha del contenedor — no
+       un cambio de disposición pedido, es restaurar lo que el markup ya
+       sugiere (el `margin-left: 10px` que el plugin le pone al botón).
+       `gap` en vez de depender de ese margin: si el plugin lo cambia, no se
+       nos mueve el layout. `height: auto` pisa el `height: 35px` fijo que
+       el plugin le da acá adentro: con flex el alto lo da el contenido. */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+    margin-right: 0;
+    height: auto;
+  }
+
+  .catalog #MultiavisoWrapper #Share.mobile-share-enabled > label {
+    display: inline-block;
+    width: auto;
+    margin: 0;
+    font-size: var(--fs-body-sm);
+    color: var(--ma-text-muted);
+  }
+
+  /* El único botón que se estila en todo este bloque. `div.mobile-share` es
+     UN SOLO nodo con las clases `st-btn` Y `mobile-share` (ver la nota de la
+     cabecera) — la cadena larga (dos ids + tres clases del plugin, ver la
+     tabla de arriba) hace falta para ganarle a `#Share.mobile-share-enabled
+     > .sharethis-inline-share-buttons > div.mobile-share { background:
+     #dfdfdf; margin-top: -6px; margin-left: 10px; height: 35px; }` del
+     plugin, que vive en este mismo `@media` y empata en especificidad si no
+     se repite exacta.
+
+     content-box (sección 2): width 46px + border 1px por lado = 48px de tap
+     target, la misma cuenta 48px que usa el resto de la hoja (§8). Cancela
+     también los márgenes que el plugin le pone pensando en su propio
+     `float: left`: acá el espaciado lo da el `gap` del contenedor de arriba,
+     no el margin del hijo. */
+  .catalog #MultiavisoWrapper #Share.mobile-share-enabled
+    > .sharethis-inline-share-buttons
+    > div.mobile-share {
+    width: 46px;
+    height: 46px;
+    line-height: 46px;
+    text-align: center;
+    background: transparent;
+    border: 1px solid var(--ma-rule);
+    border-color: var(--ma-rule);
+    border-radius: var(--radius-sm);
+    color: var(--ma-text);
+    cursor: pointer;
+    margin-top: 0;
+    margin-left: 0;
+    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+
+  /* Mismo problema, un nivel más adentro: el plugin también fija el svg —
+     `div.mobile-share > svg { height: 30px; width: 30px; top: 2px }`, cadena
+     (0,2,3,2) (dos ids, las mismas tres clases de arriba, DOS elementos —
+     `div` y `svg`). `vertical-align: middle` centra el ícono dentro del
+     `inline-block` de arriba sin pelear contra el `display` inline del
+     widget. */
+  .catalog #MultiavisoWrapper #Share.mobile-share-enabled
+    > .sharethis-inline-share-buttons
+    > div.mobile-share
+    > svg {
+    width: 20px;
+    height: 20px;
+    top: auto;
+    vertical-align: middle;
+  }
+
+  /* ⚠️ RIESGO A CONFIRMAR EN PRODUCCIÓN: ShareThis es un widget animado
+     (`st-animated`) y este tipo de librería suele escribir estilos inline de
+     hover/focus vía su propio JS. Si en `bielcar.vercel.app` un inline del
+     widget termina pisando el hover de acá abajo, la solución NO es agregar
+     `!important` — el archivo reserva ese recurso para los inline del propio
+     plugin Multiaviso (hoy usado una sola vez, en `#FilterContent`), no para
+     ShareThis. Si pasa, se documenta y se resuelve en una sesión de
+     seguimiento. La hoja de Multiaviso en sí NO tiene ningún `:hover` para
+     esta zona (confirmado grepeando `plugin-style.css`), así que hoy no hay
+     una cadena de dos ids que pisar — pero la regla usa la cadena larga
+     igual, por las dudas de que el plugin agregue una. */
+  .catalog #MultiavisoWrapper #Share.mobile-share-enabled
+    > .sharethis-inline-share-buttons
+    > div.mobile-share:hover,
+  .catalog #MultiavisoWrapper #Share.mobile-share-enabled
+    > .sharethis-inline-share-buttons
+    > div.mobile-share:active {
+    background: var(--ma-bg-raised);
+    border-color: var(--ma-text-muted);
+  }
 }
 
 /* ─── Ficha técnica ─────────────────────────────────────────────────────── */

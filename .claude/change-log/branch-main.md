@@ -587,3 +587,176 @@ files_written:
 - `npm run check` → `astro check`: **0 errors, 0 warnings, 1 hint**. El hint (`local2` no usado en `src/data/site.ts`) es preexistente, no relacionado a este cambio.
 - `npm run build` → **7 page(s) built**, sin errores.
 - `npm run deploy` no se corrió — no hacía falta, confirmado por policy (markup propio, no del plugin).
+
+---
+
+## Session 9 — web-feature on `site` (started 2026-09-19T18:30:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-19T18:30:00Z
+session_ended_utc: 2026-09-19T18:41:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/styles/multiaviso.css
+  - documentation/DESIGN.md
+```
+
+### 1. Initial approved PLAN — 2026-09-19T18:30:00Z
+
+**Tarea:** el usuario ya había aprobado el trabajo fuera de este hilo (indicado explícitamente en el pedido: "El usuario ya aprobó el trabajo — implementá directamente, sin parar a pedir aprobación del plan"), así que esta sesión implementa directo sin STOP de PLAN. `#Share` (botón "Compartir" del detalle de vehículo, mobile) se veía con fondo blanco/gris claro sobre el fondo oscuro del sitio — nunca se había restilado; solo aparecía como línea suelta en el comentario de estructura de la sección 9. El usuario capturó el DOM real con devtools en producción y lo aportó como parte del pedido.
+
+**a) Archivos a crear/modificar:**
+1. `src/styles/multiaviso.css` (REVIEW REQUIRED — solo verificable con `npm run deploy`):
+   - L1243-1262 (comentario de estructura §9) — expandir la línea suelta `#Share` con la anotación de que es ShareThis, script 3° embebido por Multiaviso, remitiendo a la nota detallada más abajo.
+   - Nueva sección `#Share` insertada entre `a#ContactNow:hover` y el comentario "Ficha técnica" (orden semántico: `#Share` va después de `#ContactNow` en el DOM real): nota de estructura verificada + reglas para `#Share`, `#Share label`, `.st-btn`, `.st-btn svg`, `.st-btn:hover`/`:active`.
+2. `documentation/DESIGN.md` L521 — corregir la afirmación de que el botón trae Facebook/X/WhatsApp/copiar visibles y funcionales: en mobile esos cuatro están `display:none` inline y el único botón visible dispara la hoja de compartir nativa (Web Share API), no un panel de ShareThis. Aclarar que es un widget de terceros (ShareThis), no markup propio de Multiaviso.
+3. `.claude/change-log/branch-main.md` — la rama es `main` (no matchea `^[A-Z][A-Z0-9]+-\d+$`), y el archivo con ese nombre exacto ya existe con la convención completa (yaml + bloques numerados) usada en sesiones previas de este mismo agente sobre este stack; se usa esa convención en vez de crear un archivo nuevo por slug de feature (los dos archivos de slug que existen, `filtros-mobile-modal.md` y `catalogo-gutter-mobile.md`, usan un formato más viejo sin yaml/session-header y parecen anteriores a que se fijara la regla estricta de nombrado por rama — no se replica ese patrón).
+
+**b) Interfaces/contratos:** ninguno — CSS puro + doc, sin componentes ni props nuevas.
+
+**c) Server/client:** no aplica (Astro sin React; `#Share` es DOM inyectado por un script de terceros, restilado con CSS puro).
+
+**d) Comandos:** `npm run check`, `npm run build`. `npm run deploy` NO se corre en esta sesión (instrucción explícita del pedido) — queda pendiente de confirmación visual por el usuario en producción.
+
+**e) Contratos producidos:** n/a. **f) Contratos consumidos:** n/a.
+
+**g) Alternativa más fuerte considerada:** enmascarar el ícono con `mask-image` apuntando al SVG de ShareThis en vez de dejar que el `<svg fill="currentColor">` inline herede `color` directamente — se descartó porque el DOM real confirma que el path ya usa `fill="currentColor"`, así que una máscara sería trabajo redundante para lograr exactamente el mismo resultado con más superficie de fallo (requiere URL del asset, CORS, etc.).
+
+**h) Supuesto que carga el peso:** que el único `.st-btn` visible en el viewport mobile real (`data-network="mobile-share"`) sigue siendo el mismo en producción hoy — es decir, que ShareThis no cambia su detección de "es mobile" ni su lista de redes visibles entre la captura del usuario y el deploy de este cambio.
+
+**i) Observación que falsificaría el enfoque:** si en `bielcar.vercel.app` alguno de los cuatro `.st-btn` de red aparece visible junto con (o en vez de) `.mobile-share`, el layout de `#Share` (pensado para un solo botón cuadrado de 48px) probablemente necesite `flex-wrap`/`gap` adicional para no romper en una fila de cinco íconos — hoy no se agregó porque el DOM capturado solo muestra un botón visible.
+
+### 2. Verification — 2026-09-19T18:41:00Z
+
+- `npm run check` → `astro check`: **0 errors, 0 warnings, 1 hint** (el hint es `local2` no usado en `src/data/site.ts`, preexistente y no relacionado a este cambio).
+- `npm run build` → **7 page(s) built**, sin errores.
+- `npm run deploy` no se corrió (instrucción explícita del pedido: "NO corras `npm run deploy` — lo decide el usuario"). Pendiente de confirmación visual en `bielcar.vercel.app` sobre una URL `?ma_carid=` en mobile.
+- Grep de confirmación: `grep -c "!important" src/styles/multiaviso.css` sobre el diff de esta sesión (`git diff`) muestra CERO ocurrencias nuevas de `!important` — el bloque agregado no usa ninguno, cumpliendo la restricción dura del pedido. Nota aparte: el archivo COMPLETO (no el diff de esta sesión) ya tenía más de un `!important` preexistente antes de esta sesión (`#FilterContent` overflow-y, tres reglas de `#SpecsDescription` color, y el `top` del modal de imagen) — la premisa del pedido de que "hoy hay UN SOLO `!important` en todo el archivo" no se sostiene contra el archivo completo, pero no afecta la restricción real (que esta sesión no agregue ninguno), así que se documenta acá y se sigue adelante sin bloquear.
+
+---
+
+## Session 10 — web-feature on `site` (started 2026-09-19T21:48:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-19T21:48:00Z
+session_ended_utc: 2026-09-19T21:57:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/styles/multiaviso.css
+```
+
+### 1. Initial approved PLAN — 2026-09-19T21:48:00Z
+
+**Tarea:** fix acotado, ya aprobado por el usuario fuera de este hilo ("El usuario ya aprobó, implementá directo"). La sesión 9 restiló `#Share` pero el fondo gris (`#dfdfdf`) del botón de compartir en mobile seguía ahí en producción. El usuario diagnosticó la causa: la regla del plugin en esa zona trae DOS ids en la cadena (`#MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share`, especificidad (0,2,3,1)) y la nuestra (`.catalog #MultiavisoWrapper .st-btn`, (0,1,2,0)) solo tenía uno — perdíamos por ID, el mismo patrón que ya documenta la nota de `#SpecsContact`. Se implementó directo, sin STOP de PLAN, siguiendo la instrucción explícita.
+
+**a) Archivos a crear/modificar:**
+1. `src/styles/multiaviso.css` (REVIEW REQUIRED — solo verificable con `npm run deploy`), sección 9 (`#Share`):
+   - Reescribir el comentario de cabecera de `#Share` documentando la regla del plugin causante, su cuenta de especificidad, y el resto de las reglas del plugin auditadas en la misma zona (mismo tono que la nota de `#SpecsContact`).
+   - `#Share.mobile-share-enabled`: pasa a `display:flex` (layout horizontal — label izquierda, botón derecha, alineado a la derecha con `gap`), reemplazando el `display:block` + `margin-bottom` del label que apilaba verticalmente (esa regla nunca ganó en producción: empataba con la variante `.mobile-share-enabled > label` del plugin y perdía por orden de carga).
+   - `#Share .st-btn` (antes `.st-btn` suelto): acotado el alcance, ver instrucción 6 del pedido.
+   - Nueva regla de alta especificidad para `div.mobile-share` (fondo, borde, márgenes, alto) replicando la cadena EXACTA del plugin + `.catalog`.
+   - Nueva regla equivalente para el `svg` hijo de `div.mobile-share` — encontrada auditando el resto de la hoja del plugin (no estaba en el pedido original, pero el mismo patrón de dos ids aplica: `div.mobile-share > svg { height:30px; width:30px; top:2px }`, (0,2,3,2), pisaba nuestra `#Share .st-btn svg`, (0,2,2,1)).
+   - Hover/active de `div.mobile-share` con la misma cadena larga (pedido agregado a mitad de sesión por el coordinador, ver abajo).
+
+**b) Interfaces/contratos:** ninguno — CSS puro.
+
+**c) Server/client:** no aplica.
+
+**d) Comandos:** `npm run check`, `npm run build`. Sin `npm run deploy` (instrucción explícita — el catálogo no renderiza fuera de producción, no se verifica en este hilo).
+
+**e) Contratos producidos:** n/a. **f) Contratos consumidos:** n/a.
+
+**g) Alternativa más fuerte considerada:** repetir el id (`#MultiavisoWrapper#MultiavisoWrapper #Share...`) en vez de replicar la cadena completa del plugin — es lo que la nota de la card de listado (§5) deja como "próximo escalón" si alguna vez vuelve a perder. Se descartó porque es menos legible y menos trazable que copiar el selector exacto del plugin (la regla mecánica que la cabecera del archivo ya fija): con la cadena exacta, cualquiera que lea el override puede confirmar contra la hoja pública que efectivamente le gana en specificity, sin tener que contar ids repetidos a mano.
+
+**h) Supuesto que carga el peso:** que `#Share.mobile-share-enabled` es el estado real y ESTABLE del nodo en producción (no condicional a un breakpoint CSS sino a la detección de dispositivo de ShareThis) — la sesión 9 ya lo había capturado con devtools como DOM real, no especulación, así que escribir las reglas de layout contra esa clase directamente (en vez de contra `#Share` a secas) es seguro.
+
+**i) Observación que falsificaría el enfoque:** si en `bielcar.vercel.app` el nodo real NO trae la clase `.mobile-share-enabled` en algún viewport o dispositivo (por ejemplo, un tablet donde ShareThis no active el modo "mobile share"), las reglas de layout (`display:flex`, layout horizontal) no matchean y el `#Share` vuelve a comportarse con el `float`/`width` crudo del plugin — habría que agregar una variante sin la clase, igual que ya se advirtió en la sesión 9 para el caso de que aparecieran los 4 botones de red.
+
+**Pre-approval iterations:** el coordinador amplió el alcance a mitad de sesión (mensaje recibido mientras se investigaba el DOM del plugin, antes de escribir el CSS): pidió declarar `border-color` explícito (no solo vía el shorthand `border`) en la regla base de alta especificidad, y asegurar que la regla de `:hover`/`:active` usara la MISMA cadena larga (dos ids + `.catalog`) en vez de la cadena corta `.catalog #MultiavisoWrapper #Share .st-btn:hover`, que seguía siendo (0,2,3,0) y perdería contra cualquier regla del plugin con dos ids. Se incorporó antes de escribir el CSS, no como revisión posterior — no hubo implementación previa que deshacer.
+
+### 2. Implementation adjustment — 2026-09-19T21:53:00Z
+
+**No re-approval (in scope):** auditar `plugin-style.css` completo (grepeado con `curl` contra la URL pública que la cabecera del archivo ya documenta como fuente) reveló que la trampa de dos ids también afecta al `svg` hijo de `div.mobile-share` (`height:30px; width:30px; top:2px`, especificidad (0,2,3,2)) — no estaba en el pedido original, que solo mencionaba fondo/borde. Es la instrucción 3 del pedido llevada hasta el final ("revisá si hay más reglas suyas... que puedan estar ganando por la misma razón... no asumas que solo era esta"): encontrar y corregir esto es ejecutar esa instrucción, no una decisión nueva.
+
+**Qué se ajustó:** se agregó una regla `.catalog #MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share > svg { width:20px; height:20px; top:auto; vertical-align:middle }` con la cadena exacta del plugin + `.catalog`, (0,2,4,2), ganando limpio contra (0,2,3,2).
+
+**What this teaches:** "revisar las otras reglas del plugin en la misma zona" no es una frase de cortesía — auditar selector por selector (no solo el que produce el síntoma visible reportado) es lo que evita dejar un segundo bug idéntico sin arreglar en la misma sesión. El fondo gris era visible y se reportó; el ícono de 30px en vez de 20px probablemente NO se hubiera notado a simple vista (la diferencia es de 10px dentro de un botón de 46px) y hubiera quedado como una discrepancia silenciosa hasta la próxima vez que alguien mida el ícono con precisión.
+
+### 3. Verification — 2026-09-19T21:57:00Z
+
+- `npm run check` → `astro check`: **0 errors, 0 warnings, 1 hint** (el hint sigue siendo `local2` no usado en `src/data/site.ts`, preexistente, no tocado por esta sesión).
+- `npm run build` → **7 page(s) built**, sin errores.
+- `npm run deploy` NO se corrió (instrucción explícita del pedido — verificación queda pendiente en `bielcar.vercel.app`, único entorno donde el catálogo renderiza).
+- Auditoría de especificidad final contra `plugin-style.css` (descargado con `curl` desde `https://automotora.multiaviso.com/Styles/plugin-style.css?v=7`, la misma fuente que la cabecera del archivo ya documenta como pública):
+  - `#MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share` (plugin, `background:#dfdfdf; margin-top:-6px; margin-left:10px; height:35px`) → (0,2,3,1) — nuestra `.catalog #MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share` → (0,2,4,1). Gana.
+  - `div.mobile-share > svg` (plugin, `height:30px; width:30px; top:2px`) → (0,2,3,2) — la nuestra → (0,2,4,2). Gana.
+  - `#Share.mobile-share-enabled > label` (plugin, `width:auto; display:inline-block; vertical-align:bottom`) → (0,2,1,1) — empataba con la regla de la sesión 9; la nuestra ahora → (0,2,2,1). Gana.
+  - `#Share.mobile-share-enabled` (plugin, `text-align:right; margin-right:0`) → (0,2,1,0) — la nuestra → (0,2,2,0). Gana.
+  - Se grepeó `plugin-style.css` completo buscando `:hover`/`:active`/`:focus` en esta zona: NINGUNA coincidencia para `#Share`, `.st-btn` ni `div.mobile-share`. El riesgo de hover documentado en la sesión 9 (ShareThis escribiendo inline vía JS, no esta hoja) sigue en pie sin cambios; la regla de hover de esta sesión usa la cadena larga de todos modos, por las dudas.
+  - Cero usos de `!important` agregados por esta sesión: `git diff -- src/styles/multiaviso.css | grep -n '!important'` da 2 coincidencias, pero las dos están DENTRO de comentarios explicando la política del archivo (mencionan la palabra `!important`, no la aplican) — ninguna es una declaración CSS real. Confirmado leyendo las dos líneas.
+
+---
+
+## Session 11 — web-feature on `site` (started 2026-09-19T22:00:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-19T22:00:00Z
+session_ended_utc: 2026-09-19T22:04:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/styles/multiaviso.css
+```
+
+### 1. Initial approved PLAN — 2026-09-19T22:00:00Z
+
+**Tarea:** fix de regresión, ya aprobado por el usuario fuera de este hilo ("El usuario ya aprobó, implementá directo"). Reporte textual: "podemos hacer que esto sea solo para mobile? o sea solo para pantallas chicas? porque en el browser andaba perfecto todos los botones, y ahora no." En desktop, ShareThis muestra los cuatro botones de red (Facebook/X/WhatsApp/copiar link) con su `<img>` de marca; la sesión 10 los rompió sin querer.
+
+**Causa raíz — dos problemas, no uno:**
+1. Las reglas del bloque `#Share` de la sesión 10 quedaron SIN media query, aplicando también en desktop.
+2. Varias reglas (`.catalog #MultiavisoWrapper #Share .st-btn` y `#Share .st-btn svg`) se escribieron sobre `.st-btn` GENÉRICO — que son los CINCO botones (los cuatro de red MÁS el nativo) — pisándoles a los cuatro de red su fondo/ícono propio con `width/height:46px`, `background:transparent`, `border` y `svg 20x20`.
+
+**a) Archivos a crear/modificar:**
+1. `src/styles/multiaviso.css`, sección 9, bloque `#Share`:
+   - Reescribir el comentario de cabecera para explicar la regresión y el alcance nuevo (selector + media query).
+   - Envolver TODO el bloque (`#Share.mobile-share-enabled` container, `label`, botón, svg, hover/active) en `@media (max-width: 767px)`, espejando el rango de la regla del plugin que se pisa (`#MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share`, `@media (max-width: 767px)` en `plugin-style.css`) — documentando por qué NO es el 699 del resto del archivo (ese 699 complementa el `min-width:700` del plugin para `#FilterContent`; la regla de `#Share` usa un rango distinto, 767, y usar 699 dejaría una franja 700–767px sin contrarrestar el `background:#dfdfdf` del plugin).
+   - Eliminar toda referencia a `.st-btn` genérico: fusionar la regla `#Share .st-btn` (width/height/background/border/border-radius/color/cursor/transition) y `#Share .st-btn svg` dentro de las reglas ya existentes acotadas a la cadena larga `#Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share` (y su `> svg`), que es el único nodo real que corresponde estilar.
+   - Ídem en la regla de `:hover`/`:active`: sacar los dos selectores `#Share .st-btn:hover` / `:active` genéricos, dejar solo la cadena larga de `div.mobile-share`.
+   - Mover el container (`#Share.mobile-share-enabled`, flex/gap/justify-content) y el `label` dentro del mismo media query: su layout (pensado para "label + un solo botón nativo") está atado al `margin-left:10px` que el plugin solo pone dentro de este mismo `@media 767`; fuera de ahí el plugin ya resuelve el layout con sus reglas base sin media query (`#Share { margin-top:20px; height:27px }`, `#Share > label { float:left; width:61px }`, `#Share > .sharethis-inline-share-buttons { float:left }`, confirmadas leyendo `plugin-style.css` líneas 222–224, fuera de cualquier `@media`).
+
+**b) Interfaces/contratos:** ninguno — CSS puro.
+
+**c) Server/client:** no aplica.
+
+**d) Comandos:** `npm run check`, `npm run build`. Sin `npm run deploy` (instrucción explícita del pedido — NO verificar en localhost ni deployar).
+
+**e) Contratos producidos:** n/a. **f) Contratos consumidos:** n/a.
+
+**g) Alternativa más fuerte considerada:** dejar el container/label FUERA del media query (solo mover los botones) confiando en que el flex no rompe visualmente el layout de 4 botones en desktop — se descartó porque el propio comentario original de esas reglas justifica el `gap`/gap`justify-content:flex-end` con un `margin-left:10px` que el plugin solo aplica dentro de `@media 767`: aplicarlo fuera de ese rango es una suposición no verificada contra el DOM de desktop, exactamente el tipo de apuesta que el archivo ya documenta como fuente de bugs pasados (nota de `#SpecsContact` en la cabecera). Más seguro dejar que el plugin resuelva el layout de desktop con sus propias reglas, que sabemos existen y son las que el usuario vio funcionando bien.
+
+**h) Supuesto que carga el peso:** que el rango `@media (max-width: 767px)` de la regla del plugin sobre `#Share.mobile-share-enabled > ... > div.mobile-share` no cambió desde la auditoría de la sesión 10 (se re-descargó `plugin-style.css?v=7` en esta sesión y se confirmó el mismo rango, línea 267 y 287–292).
+
+**i) Observación que falsificaría el enfoque:** si en producción el contenedor `#Share` NO trae la clase `.mobile-share-enabled` fuera de mobile (por ejemplo, algún viewport intermedio donde ShareThis no la agregue), el layout de desktop dependería enteramente de las reglas base del plugin sin ningún ajuste nuestro — si esas reglas base resultan insuficientes (por ejemplo el `label` con `width:61px` fijo no entra con la tipografía del proyecto), habría que agregar una regla de layout específica para esa clase, sin tocar `.st-btn`.
+
+### 2. Verification — 2026-09-19T22:04:00Z
+
+- `npm run check` → `astro check`: **0 errors, 0 warnings, 1 hint** (hint preexistente `local2` no usado en `src/data/site.ts`, no relacionado a este cambio).
+- `npm run build` → **7 page(s) built**, sin errores.
+- `npm run deploy` NO se corrió (instrucción explícita del pedido).
+- `grep -n "\.st-btn" src/styles/multiaviso.css` tras el cambio: las únicas coincidencias que quedan están dentro de comentarios/documentación (nota de DOM capturado, tabla de especificidad, nota de la sesión); CERO selectores CSS reales apuntan a `.st-btn` genérico. Confirmado leyendo cada línea reportada.
+- `grep -n "!important" src/styles/multiaviso.css` sobre el diff de esta sesión: cero declaraciones nuevas (las únicas menciones de `!important` en el bloque tocado son texto de comentario, no CSS real) — cumple la restricción dura del pedido.
+- Alcance final de cada selector dentro de `@media (max-width: 767px)`:
+  - `.catalog #MultiavisoWrapper #Share.mobile-share-enabled` (container, flex/gap/justify-content)
+  - `.catalog #MultiavisoWrapper #Share.mobile-share-enabled > label`
+  - `.catalog #MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share` (width/height/background/border/border-radius/color/cursor/margin/transition — fusiona lo que antes eran dos reglas, la genérica de `.st-btn` y la específica)
+  - `.catalog #MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share > svg`
+  - `.catalog #MultiavisoWrapper #Share.mobile-share-enabled > .sharethis-inline-share-buttons > div.mobile-share:hover` / `:active`
+  - Fuera del media query no queda ninguna regla del bloque `#Share` — todo el bloque vive adentro.

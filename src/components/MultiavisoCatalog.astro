@@ -143,6 +143,11 @@ const { surface = 'dark', view = 'list' } = Astro.props;
 
   if (sheet && container) {
     const mq = window.matchMedia(MOBILE);
+    /* Mismo patrón que `mq`: una instancia viva, se lee `.matches` en el
+       momento de scrollear. No hace falta un listener de `change` — a
+       diferencia de `mq`, nada necesita reaccionar a que cambie a mitad de
+       sesión. */
+    const reduceMotionMq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const closeBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__close');
     const applyBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__apply');
     const clearBtn = sheet.querySelector<HTMLButtonElement>('.ma-sheet__clear');
@@ -150,6 +155,20 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     const catalog = container.closest<HTMLElement>('.catalog');
     let open = false;
     let activeCat: number | null = null;
+    /* Estado del scroll programático hacia una categoría (click en el riel).
+       `scrollTarget` es el `scrollTop` que se le pidió a `#FilterContent`; el
+       listener de `scroll` lo compara contra el real para saber cuándo
+       "llegó" y devolverle el control al scrollspy. El timeout es solo la red
+       de contención si el navegador nunca reporta ese scrollTop exacto
+       (redondeo, rebote, o el usuario interrumpe el scroll a mitad). */
+    let programmaticScroll = false;
+    let scrollTarget = 0;
+    let scrollFallback: number | undefined;
+    /* Nodo de `#FilterContent` al que ya se le agregó el listener de scroll.
+       Evita duplicarlo si `buildRail` corre más de una vez sobre el mismo
+       panel — se re-ejecuta en cada apertura de la hoja. */
+    let scrollBound: HTMLElement | null = null;
+    let spyQueued = false;
     /* Cierre optimista: el observer lee `display !== none` y jQuery deja
        `display: block` durante todo el slideUp. Si esperáramos a `isOpen() ===
        false`, el chrome se iría DESPUÉS de que el panel ya colapsó. Durante
@@ -174,6 +193,21 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       if (!panel) return [];
       return [...panel.querySelectorAll<HTMLElement>(':scope > .filter-block')];
     };
+
+    /* Bloques "categoría": los que tienen `.filter-block-label`. Excluye
+       `#Counts` (nth 1), que no tiene label y por eso no es navegable desde
+       el riel — pero sigue contando para los índices `nth` de `getBlocks()`,
+       que son 1-based y compartidos con `selections`. Única fuente para el
+       riel (armado de botones) Y el scrollspy (candidato activo): los dos
+       necesitan la misma lista de categorías y el mismo índice. */
+    const categoryBlocks = (): { nth: number; block: HTMLElement; label: string }[] =>
+      getBlocks()
+        .map((block, index) => ({
+          nth: index + 1,
+          block,
+          label: block.querySelector('.filter-block-label')?.textContent?.trim() ?? '',
+        }))
+        .filter((entry) => entry.label !== '');
 
     const readMa = (href: string): Map<string, string> => {
       const map = new Map<string, string>();
@@ -302,37 +336,137 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       paintPending();
     };
 
-    const selectCategory = (nth: number): void => {
-      activeCat = nth;
-      document.documentElement.dataset.maCat = String(nth);
-      rail?.querySelectorAll<HTMLButtonElement>('.ma-sheet__rail-item').forEach((btn) => {
-        btn.setAttribute('aria-pressed', btn.dataset.maCat === String(nth) ? 'true' : 'false');
+    /* Umbral en px antes de considerar "cruzada" la sección siguiente. Sin
+       margen, el bloque que arranca justo en el borde superior del panel
+       tarda un frame de más en marcarse y el riel parpadea al toque. */
+    const SPY_THRESHOLD = 12;
+
+    const activeCategoryForScroll = (panel: HTMLElement): number | null => {
+      const cats = categoryBlocks();
+      if (cats.length === 0) return null;
+
+      /* Forzar la última categoría al llegar al fondo: si mide poco (p.ej.
+         "Transmisión" con dos opciones) su `top` nunca cruza el umbral desde
+         arriba y quedaría sin marcar nunca, aunque sea literalmente lo
+         último que se ve. */
+      if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 2) {
+        return cats[cats.length - 1].nth;
+      }
+
+      let candidate = cats[0].nth;
+      for (const { nth, block } of cats) {
+        const marginTop = parseFloat(getComputedStyle(block).scrollMarginTop) || 0;
+        if (block.offsetTop - marginTop <= panel.scrollTop + SPY_THRESHOLD) candidate = nth;
+      }
+      return candidate;
+    };
+
+    /* Un solo listener de `scroll` en `#FilterContent`, coalescido con rAF —
+       mismo criterio que `schedule` para las mutaciones del plugin. Mientras
+       dura un scroll programático (click en el riel) se ignora: si no, el
+       riel marcaría de paso todas las categorías intermedias y se leería
+       como parpadeo en vez de salto directo a la elegida. */
+    const onPanelScroll = (): void => {
+      if (!mq.matches || !open || spyQueued) return;
+      spyQueued = true;
+      requestAnimationFrame(() => {
+        spyQueued = false;
+        const panel = document.getElementById('FilterContent');
+        if (!panel) return;
+
+        if (programmaticScroll) {
+          if (Math.abs(panel.scrollTop - scrollTarget) < 2) {
+            programmaticScroll = false;
+            window.clearTimeout(scrollFallback);
+          } else {
+            return;
+          }
+        }
+
+        const nth = activeCategoryForScroll(panel);
+        if (nth !== null && nth !== activeCat) paintCategory(nth);
       });
+    };
+
+    /* Solo pinta: `aria-pressed` en el riel y, si el ítem activo quedó fuera
+       de vista (el riel desbordó y scrollea, caso raro con 8 categorías),
+       `scrollIntoView({ block: 'nearest' })` lo trae de vuelta sin mover nada
+       si ya estaba visible. NO scrollea `#FilterContent` — eso es
+       `scrollToCategory`, y separarlas es lo que permite que el scrollspy
+       pinte sin generar un scroll en loop. */
+    const paintCategory = (nth: number): void => {
+      activeCat = nth;
+      rail?.querySelectorAll<HTMLButtonElement>('.ma-sheet__rail-item').forEach((btn) => {
+        const isActive = btn.dataset.maCat === String(nth);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        if (isActive) btn.scrollIntoView({ block: 'nearest' });
+      });
+    };
+
+    /* Cuánto tarda como máximo en asentarse el `scrollTo` suave antes de que
+       el scrollspy retome el control igual, llegue o no exactamente al
+       `scrollTarget` calculado (ver el comentario de `programmaticScroll`
+       más arriba). Más que `--dur-drawer` (400ms): la distancia a scrollear
+       acá no tiene un tope fijo como el slide de la hoja. */
+    const SCROLL_SETTLE_FALLBACK_MS = 500;
+
+    /* Scrollea `#FilterContent` — el contenedor que de verdad scrollea, NO
+       el viewport — hasta el bloque `nth`. El offset resta
+       `scroll-margin-top` (CSS, multiaviso.css) en vez de un número
+       duplicado acá: una sola fuente de verdad para "cuánto aire" queda
+       arriba del bloque. */
+    const scrollToCategory = (nth: number): void => {
+      const panel = document.getElementById('FilterContent');
+      const block = getBlocks()[nth - 1];
+      if (!panel || !block) return;
+
+      const marginTop = parseFloat(getComputedStyle(block).scrollMarginTop) || 0;
+      const max = panel.scrollHeight - panel.clientHeight;
+      scrollTarget = Math.min(Math.max(block.offsetTop - marginTop, 0), max);
+
+      programmaticScroll = true;
+      window.clearTimeout(scrollFallback);
+      scrollFallback = window.setTimeout(() => {
+        programmaticScroll = false;
+      }, SCROLL_SETTLE_FALLBACK_MS);
+
+      panel.scrollTo({ top: scrollTarget, behavior: reduceMotionMq.matches ? 'auto' : 'smooth' });
+    };
+
+    /* El click del riel hace las dos cosas; el scrollspy (`onPanelScroll`)
+       solo pinta, nunca llama a esto — si lo hiciera, cada scroll disparado
+       por el propio scrollspy relanzaría un `scrollTo`, y con eso un loop. */
+    const selectCategory = (nth: number): void => {
+      paintCategory(nth);
+      scrollToCategory(nth);
     };
 
     const buildRail = (): void => {
       if (!mq.matches || !rail) {
         rail && (rail.innerHTML = '');
-        delete document.documentElement.dataset.maCat;
         activeCat = null;
         return;
       }
 
-      const entries = getBlocks()
-        .map((block, index) => {
-          const nth = index + 1;
-          const label = block.querySelector('.filter-block-label')?.textContent.trim();
-          if (!label) return null;
-          return { nth, label };
-        })
-        .filter((entry): entry is { nth: number; label: string } => entry !== null);
+      const panel = document.getElementById('FilterContent');
+      if (panel) {
+        /* Arranca arriba: jQuery no resetea el scroll al reabrir (solo
+           togglea `display`), así que sin esto una segunda apertura heredaría
+           la posición de scroll de la primera. */
+        panel.scrollTop = 0;
+        if (scrollBound !== panel) {
+          panel.addEventListener('scroll', onPanelScroll, { passive: true });
+          scrollBound = panel;
+        }
+      }
 
+      const entries = categoryBlocks();
       if (entries.length === 0) {
         rail.innerHTML = '';
         return;
       }
 
-      const signature = entries.map((entry) => `${entry.nth}:${entry.label}`).join('|');
+      const signature = entries.map(({ nth, label }) => `${nth}:${label}`).join('|');
       if (rail.dataset.sig !== signature) {
         rail.dataset.sig = signature;
         rail.innerHTML = '';
@@ -347,12 +481,10 @@ const { surface = 'dark', view = 'list' } = Astro.props;
         }
       }
 
-      const nthToSelect =
-        activeCat !== null && entries.some((entry) => entry.nth === activeCat)
-          ? activeCat
-          : (entries[0]?.nth ?? null);
-
-      if (nthToSelect !== null) selectCategory(nthToSelect);
+      /* Primera categoría siempre, no la última activa antes de cerrar: el
+         panel ya se reseteó a scrollTop 0 arriba, y el riel tiene que leer
+         igual. */
+      paintCategory(entries[0].nth);
       paintPending();
     };
 
@@ -378,7 +510,13 @@ const { surface = 'dark', view = 'list' } = Astro.props;
         closeBtn?.focus();
       } else {
         resetPending();
-        delete document.documentElement.dataset.maCat;
+        /* Apagar cualquier scroll programático/scrollspy en vuelo: si el
+           cierre llega por este camino (p.ej. el viewport cruza a desktop
+           con `mq` a mitad de un scroll suave) y no por `close()`, que no
+           quede el flag prendido esperando un `scrollTop` que ya no va a
+           llegar. */
+        programmaticScroll = false;
+        window.clearTimeout(scrollFallback);
       }
     };
 
@@ -413,10 +551,11 @@ const { surface = 'dark', view = 'list' } = Astro.props;
       closing = true;
       open = false;
       resetPending();
+      programmaticScroll = false;
+      window.clearTimeout(scrollFallback);
       document.documentElement.classList.remove('ma-filters-open');
       sheet.setAttribute('inert', '');
       document.body.style.overflow = '';
-      delete document.documentElement.dataset.maCat;
       document.getElementById('FiltersTitle')?.click();
     };
 
@@ -467,3 +606,4 @@ const { surface = 'dark', view = 'list' } = Astro.props;
     schedule();
   }
 </script>
+

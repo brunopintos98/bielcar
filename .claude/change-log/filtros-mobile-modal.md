@@ -487,3 +487,154 @@ filtro suelto.
 | `src/styles/multiaviso.css` | `#CurrentFilters { display: none }` en ≤699px; `#FiltersTitle` fit-content + ::before ícono + ::after label. **review_required** |
 | `src/components/MultiavisoCatalog.astro` | `syncFilterCount()` |
 | `documentation/DESIGN.md` | §6.1 árbol (`#CurrentFilters` en `td#List`); §8 trigger compacto y chips ocultos. |
+
+---
+
+## Session 14 — web-feature on `site` (started 2026-09-19T21:10:00Z)
+
+```yaml
+agent: web-feature
+stack: site
+session_started_utc: 2026-09-19T21:10:00Z
+session_ended_utc: 2026-09-19T21:26:00Z
+final_status: completed
+handoff_slug: null
+files_written:
+  - src/styles/multiaviso.css
+  - src/components/MultiavisoCatalog.astro
+  - documentation/DESIGN.md
+  - .claude/change-log/filtros-mobile-modal.md
+```
+
+### 1. Initial approved PLAN — 2026-09-19T21:10:00Z
+
+**Pre-approval iterations:** n/a — the plan arrived already approved. The launching
+context stated explicitly that `policy` had triaged the request, the user had
+already said "proceed" on the plan below, and this session should implement
+directly without re-running PLAN/STOP. No fresh STOP happened in this session;
+what follows is the plan as handed off, reproduced verbatim in substance.
+
+**The plan:**
+
+Master-detail (riel + panel que muestra SOLO la sección activa) → scroll
+continuo con riel como índice + scrollspy.
+
+CSS (`src/styles/multiaviso.css`, `@media (max-width: 699px)`):
+1. Reemplazar el `display: none` + 11 reglas `html[data-ma-cat='N'] … :nth-child(N)`
+   por `> .filter-block { display: flex }` + `:nth-child(1) { display: block }`
+   — muestra TODOS los bloques, elimina el tope de 12.
+2. Dejar de ocultar `.filter-block-label` en bloques ≥2; darle estilo de
+   encabezado (separación superior, distinción de peso/tamaño, filete entre
+   secciones).
+3. `scroll-margin-top` en `> .filter-block` para que el scroll por ancla no
+   pegue la sección al borde superior.
+4. `.ma-sheet__rail`: `overflow-y: auto` + `overscroll-behavior: contain`
+   (solo si desborda).
+5. Actualizar los comentarios que describen el mecanismo viejo.
+
+JS (`src/components/MultiavisoCatalog.astro`):
+6. Partir `selectCategory` en pintar riel (`aria-pressed`) vs. scrollear al
+   bloque; el click hace ambas, el scrollspy solo pinta.
+7. Scroll suave con `scrollTo({ top, behavior })` sobre `#FilterContent`
+   (NO el viewport), respetando `prefers-reduced-motion` vía `matchMedia`.
+8. Scrollspy: listener `scroll` en `#FilterContent`, coalescido con rAF;
+   último bloque cuyo top cruzó un umbral; forzar la última sección al llegar
+   al fondo (`scrollTop + clientHeight >= scrollHeight - epsilon`).
+9. Suprimir el scrollspy durante el scroll programático (flag + apagado al
+   acercarse al target, con fallback por timeout).
+10. Al marcar un ítem, `scrollIntoView({ block: 'nearest' })` sobre ese botón
+    del riel.
+11. Eliminar `document.documentElement.dataset.maCat` por completo (incl.
+    `apply` y `close`).
+12. Al abrir la hoja: scroll del panel arriba, riel con la primera sección
+    marcada.
+
+Documentación:
+13. Actualizar DESIGN.md §8 (describe el mecanismo viejo textualmente).
+14. Append a este ledger.
+
+Restricciones duras (heredadas de reglas de proyecto, no propias de esta
+tarea): nada de Tailwind/ClientRouter; overrides prefijados con
+`.catalog #MultiavisoWrapper`, ganar por especificidad no `!important` (el
+único `!important` existente — `overflow-y: auto` en `#FilterContent` — tiene
+que seguir siendo el único); no manipular markup del plugin con JS (lectura,
+observación y scroll sobre sus nodos sí; escribir atributos nuevos no — el
+único write existente es `data-ma-pending`); no inventar labels (salen del
+`textContent` del plugin); TS tipado dentro del `<script>` del `.astro`.
+
+**Contratos producidos:** ninguno — cambio de comportamiento interno del
+chrome de filtros, sin nueva superficie pública ni tipos consumidos por otros
+specialists.
+
+**Contratos consumidos:** ninguno.
+
+**Strongest alternative considered:** mantener el master-detail pero subir el
+tope de 12 bloques (cambio trivial de una constante/lista). Se descartó
+porque el problema real no era el tope — con 8 bloques nunca se llegaba a
+12 — sino que ver otra categoría exigía un tap de modo antes de poder leerla;
+el scroll continuo ataca eso directamente.
+
+**Load-bearing assumption:** `#FilterContent` sigue siendo el único
+contenedor que scrollea y sus `.filter-block` siguen siendo hijos directos
+planos (ya verificado en producción en sesiones anteriores). Todo el cálculo
+de scroll (`offsetTop`, `scrollHeight`, `scrollTop`) asume esa forma; si el
+plugin alguna vez anida o pagina los bloques, el cálculo por índice se rompe.
+
+**Falsifying observation:** en producción, tocar una categoría del riel no
+deja el propio riel marcado en esa categoría al terminar el scroll suave (el
+scrollspy se reactiva tarde o temprano y pinta otra cosa), o el riel parpadea
+por las categorías intermedias durante el scroll programático. Cualquiera de
+las dos señala que el umbral/supresión de `activeCategoryForScroll` /
+`onPanelScroll` necesita otra afinación, o que hay una interferencia del
+`MutationObserver` existente que no se previó.
+
+**Approval token:** "El usuario ya dijo 'proceed' sobre el plan que sigue —
+NO vuelvas a parar para pedir aprobación del plan; implementalo" (instrucción
+literal del contexto que lanzó esta sesión).
+
+### 2. Verification — 2026-09-19T21:24Z
+
+- `npm run check` (`astro check`) — 0 errors, 0 warnings, 1 pre-existing hint
+  unrelated to this change (`src/data/site.ts:14`, unused `local2` import).
+- `npm run build` — 7 pages built, no errors. Confirmed the modified
+  `<script>` bundled into
+  `dist/_astro/MultiavisoCatalog.astro_astro_type_script_index_0_lang.*.js`
+  (grepped for `ma-sheet__rail-item`).
+- Catalog behavior NOT verified visually: per project rule, Multiaviso only
+  renders on `bielcar.vercel.app` (domain whitelist). Empty container in dev
+  and 404 on `plugin/v3/list` are expected, not debugged.
+- **Pending human review:** the diff in `src/styles/multiaviso.css`
+  (`review_required_paths`) and real-device verification of the scrollspy
+  timing/threshold (`SPY_THRESHOLD = 12`, `SCROLL_SETTLE_FALLBACK_MS = 500`)
+  after `npm run deploy`, which this session did not run.
+
+### Decisiones no explícitas en el plan, tomadas al implementar
+
+- **`.ma-sheet__rail` ya tenía `overflow-y: auto` + `overscroll-behavior:
+  contain`** desde una sesión anterior (Session 11) — el plan pedía
+  agregarlo; se verificó y no hizo falta tocar nada (documentado en el diff
+  conceptual de abajo, no en el CSS).
+- **El riel ya NO recuerda la última categoría activa entre aperturas.** El
+  código viejo de `buildRail` preservaba `activeCat` si seguía siendo válido
+  al reabrir; el ítem 12 del plan pide explícitamente "arranca arriba /
+  primera sección marcada", así que se simplificó a siempre-primera-entrada.
+  Es una pérdida de estado que existía antes; se prioriza la instrucción
+  explícita del plan por sobre preservar ese comportamiento no pedido.
+- **Guard `scrollBound`** para no duplicar el listener de `scroll` en
+  `#FilterContent` si `buildRail` corre más de una vez sobre el mismo nodo
+  (se re-ejecuta en cada apertura de la hoja, y el nodo del plugin persiste
+  entre aperturas dentro del mismo page load).
+- **Limpieza de `programmaticScroll`/`scrollFallback` en `close()` y en la
+  rama `else` de `apply()`**, no pedida palabra por palabra pero directamente
+  al servicio del ítem 9 (evita que el flag de supresión quede prendido si la
+  hoja se cierra a mitad de un scroll suave).
+
+### Diff conceptual por archivo
+
+| Archivo | Cambio |
+|---|---|
+| `src/styles/multiaviso.css` | Sección "Riel de categorías" reescrita: `> .filter-block` pasa de `display: none` + 11 reglas `html[data-ma-cat='N']` a `display: flex` (todos visibles) + excepción `:nth-child(1)` en `block`; `scroll-margin-top: var(--space-4)` en cada bloque; el label de `:nth-child(n+2)` deja de ocultarse y gana `margin-top` + `padding-top` + `border-top` como encabezado de sección. Comentarios reescritos para describir el mecanismo nuevo y por qué reemplaza al viejo. **review_required**. |
+| `src/components/MultiavisoCatalog.astro` | Nuevo `reduceMotionMq`; nuevo estado (`programmaticScroll`, `scrollTarget`, `scrollFallback`, `scrollBound`, `spyQueued`); nuevo helper `categoryBlocks()` (única fuente para riel y scrollspy); `selectCategory` partido en `paintCategory` (pinta `aria-pressed` + `scrollIntoView('nearest')` en el botón del riel) y `scrollToCategory` (scrollea `#FilterContent`, lee `scroll-margin-top` de CSS, respeta reduced-motion); nuevas `activeCategoryForScroll` + `onPanelScroll` (scrollspy coalescido con rAF, forzado al fondo); `buildRail` resetea `panel.scrollTop = 0` y adjunta el listener de scroll una sola vez; `document.documentElement.dataset.maCat` eliminado por completo (`buildRail`, `apply`, `close`). |
+| `documentation/DESIGN.md` | §8: el bullet de "columna lateral de categorías" reescrito para describir scroll continuo + riel como índice + scrollspy, con un párrafo aparte explicando qué mecanismo reemplaza y por qué. |
+| `.claude/change-log/filtros-mobile-modal.md` | Este bloque. |
+
