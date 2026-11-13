@@ -9,8 +9,8 @@
   year: "2026",   // first commit 2026-08-27 → last commit 2026-09-20 (see open questions)
   link: "bielcar.vercel.app",
   linkHref: "https://bielcar.vercel.app",
-  color: "#007F9E",
-  secondaryColor: "#005E75",
+  color: "#3764be",
+  secondaryColor: "#35468c",
   text1: "Bielcar Automóviles is a car dealership and official service workshop in Montevideo, Uruguay. It sells new cars from seven brands and used cars of any brand, and is the official service center for four of them. The new site lets visitors browse new, used and full inventory with filters and per-vehicle detail views, explore the brands, and book service or send an enquiry straight to WhatsApp through forms that pick the right line (sales or workshop).",
   text2: "Ventura rebuilt bielcar.com.uy from scratch as a static Astro 7 site in TypeScript, with plain CSS built on a custom design-token system and no UI framework or backend. The live inventory comes from Multiaviso, a third-party jQuery plugin. Ventura themed it to the brand's dark design purely through specificity-scoped CSS overrides and added a mobile filter sheet on top. Forms serialize into prefilled WhatsApp messages, and the site ships with schema.org AutomotiveBusiness JSON-LD, Open Graph cards, a generated sitemap and scroll-reveal motion.",
   tech: ["Astro 7", "TypeScript", "CSS Custom Properties", "Multiaviso", "WhatsApp deep links", "Schema.org JSON-LD", "Google Maps Embed", "Vercel"]
@@ -146,10 +146,10 @@ The catalog only renders on `bielcar.vercel.app`, so screenshots have to be take
 
 | Token | Hex |
 |---|---|
-| `--brand` | `#007F9E` |
-| `--brand-deep` | `#005E75` |
-| `--brand-bright` | `#1F9CBF` |
-| `--brand-wash` | `#E8F3F7` |
+| `--brand` | `#3764be` |
+| `--brand-deep` | `#35468c` |
+| `--brand-bright` | `#3764be` |
+| `--brand-wash` | `#ECEFF8` |
 | `--whatsapp` | `#128C3E` |
 | `--whatsapp-hover` | `#0E7433` |
 | `--surface-dark` | `#0D0D0D` |

@@ -49,7 +49,7 @@ Se toma el lenguaje de premiumcars, no su contenido.
 
 ## 2. Color
 
-**El acento de Bielcar es azul petróleo, no rojo.** Sale de dos mediciones independientes sobre el sitio actual: un tally de colores computados dio `rgb(0,127,158)` como el único color no heredado de Bootstrap, y un muestreo manual dio `#287f9f`. Prácticamente el mismo tono.
+**El acento de Bielcar es el azul del logo (desde 2026-11-13; antes azul petróleo, ver la nota de abajo).** El origen del petróleo: Sale de dos mediciones independientes sobre el sitio actual: un tally de colores computados dio `rgb(0,127,158)` como el único color no heredado de Bootstrap, y un muestreo manual dio `#287f9f`. Prácticamente el mismo tono.
 
 Todo lo demás en el sitio viejo (`#333` de texto, `#337ab7` de link) son defaults de Bootstrap 3, no decisiones de marca. Se descartan.
 
@@ -69,11 +69,15 @@ Todo lo demás en el sitio viejo (`#333` de texto, `#337ab7` de link) son defaul
   --text-on-light:       #141414;
   --text-on-light-muted: #4A4A4A;
 
-  /* Marca — azul petróleo Bielcar */
-  --brand:               #007F9E;  /* superficies de marca, bordes, elementos grandes */
-  --brand-deep:          #005E75;  /* hover sobre --brand, texto sobre claro */
-  --brand-bright:        #1F9CBF;  /* TEXTO sobre oscuro: nav activo, año | km, "Volver al listado" */
-  --brand-wash:          #E8F3F7;  /* fondo sutil sobre banda clara, chips */
+  /* Logo — los dos azules del isotipo */
+  --logo-blue:           #35468c;
+  --logo-blue-bright:    #3764be;
+
+  /* Marca — azul del logo (antes petróleo #007F9E / #005E75 / #1F9CBF / #E8F3F7) */
+  --brand:               var(--logo-blue-bright); /* superficies de marca, bordes, elementos grandes */
+  --brand-deep:          var(--logo-blue);        /* hover sobre --brand, texto sobre claro */
+  --brand-bright:        var(--logo-blue-bright); /* TEXTO sobre oscuro: nav activo, año | km, "Volver al listado" */
+  --brand-wash:          #ECEFF8;  /* fondo sutil sobre banda clara, chips */
   --brand-contrast:      #FFFFFF;
 
   /* WhatsApp — color de acción */
@@ -99,7 +103,7 @@ Petróleo y verde WhatsApp están a unos 46° de matiz, los dos saturados y frí
 | Verde | Acción | Todos los botones sólidos de conversión |
 | Fantasma | Acción secundaria | Botones no-WhatsApp: borde `--rule-strong`, fondo transparente |
 
-**Excepción, el logo (2026-11-13):** el logo dejó de ser petróleo. Pasó a azul `#35468c` (fondo claro) / `#3764be` (fondo oscuro), por decisión de Bruno, y se aceptó cambiar SOLO el logo. Header y footer muestran el logo azul al lado de elementos petróleo, una divergencia conocida y aceptada. Todo lo que es isotipo también pasó a azul: favicon, apple-touch-icon, `og.png`, `theme-color` y el loader del catálogo. Usan los tokens `--logo-blue` (`#35468c`) y `--logo-blue-bright` (`#3764be`) de `tokens.css`, o esos hex horneados donde no se pueden leer custom properties. El resto del sitio sigue en `--brand*` petróleo. Si después se decide un rebrand completo, hay que tocar `--brand*` en `tokens.css`, esta sección y §2.2 (contrastes), y `--logo-blue*`. Detalle en el comentario de `LOGO` en `src/data/site.ts`.
+**Rebrand al azul del logo (2026-11-13):** primero cambió solo el logo (azul `#35468c` sobre claro / `#3764be` sobre oscuro) y después, por decisión de Bruno, todo el acento del sitio: los `--brand*` ahora apuntan a `--logo-blue*`. Links, nav activo, año | km, filtros activos, focus y hovers pasan de petróleo/celeste a azul. El verde WhatsApp no cambia. El análisis de choque petróleo/verde de esta sección se escribió con el petróleo; con el azul la distancia de matiz al verde es mayor, así que el argumento vale igual o mejor.
 
 La lógica: en este sitio casi toda conversión termina en WhatsApp (consultar vehículo, agendar service, contacto de ventas). Si el verde es el color de acción, deja de ser una excepción que hay que justificar y pasa a ser una regla. Y los pocos botones que no son WhatsApp no necesitan ser sólidos.
 
@@ -113,8 +117,8 @@ Ratios calculados a mano contra `--surface-dark` (`#0D0D0D`). **Verificar con un
 
 | Color | Ratio aprox. | Veredicto |
 |---|---|---|
-| `--brand` `#007F9E` | ~4.2:1 | **No usar para texto chico.** Solo fondos, bordes, íconos grandes |
-| `--brand-bright` `#1F9CBF` | ~6.1:1 | Apto para texto de 13px en adelante |
+| `--brand` / `--brand-bright` `#3764be` | ~3.5:1 (3.2:1 sobre `#171717`) | **Por debajo de AA (4.5:1) para texto chico.** Igual se usa como texto sobre oscuro (nav activo, año \| km, links): decisión explícita de Bruno (2026-11-13), a la vista de `#5b8ae0` (5.3:1), mismo matiz más claro, que es la salida si hay que pasar AA |
+| `--brand-deep` `#35468c` sobre `--surface-light` | ~7.8:1 | Apto para texto |
 | `--whatsapp` `#128C3E` | ~3.4:1 | Solo como fondo de botón con texto blanco encima |
 | `--text-on-dark-faint` `#6E6E6E` | ~3.5:1 | Solo labels 12-13px en fichas, nunca prosa |
 
@@ -655,7 +659,7 @@ Cómo se implementa, porque acota lo que se puede pedir después:
 
 | Item | Resultado |
 |---|---|
-| Paleta de Bielcar | Petróleo `#007F9E`. §2 |
+| Paleta de Bielcar | Azul del logo `#3764be` / `#35468c` (antes petróleo `#007F9E`). §2 |
 | Listado combinado | `condition: 'ALL'` |
 | Script de carrusel | Confirmado, ver §6.4 |
 | Whitelist | Por dominio. Previews de Vercel no funcionan |

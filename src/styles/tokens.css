@@ -26,18 +26,20 @@
   --text-on-light:       #141414;
   --text-on-light-muted: #4A4A4A;
 
-  /* Marca — azul petróleo Bielcar */
-  --brand:               #007F9E;  /* superficies, bordes, íconos grandes */
-  --brand-deep:          #005E75;  /* hover sobre --brand; texto sobre claro */
-  --brand-bright:        #1F9CBF;  /* TEXTO sobre oscuro: nav activo, año|km */
-  --brand-wash:          #E8F3F7;  /* fondo sutil sobre banda clara, chips */
-  --brand-contrast:      #FFFFFF;
-
-  /* Logo — azul (2026-11-13). Solo el isotipo usa estos: logo.svg, favicon,
-     og.png y el loader del catálogo. El resto del sitio sigue en --brand*
-     (DESIGN.md §2.1). Los SVG/PNG de public/ los llevan horneados. */
+  /* Logo — los dos azules del isotipo. Fuente de los --brand* de abajo.
+     Los SVG/PNG de public/ (logo, favicon, og.png) los llevan horneados. */
   --logo-blue:           #35468c;  /* isotipo sobre claro; disco exterior */
   --logo-blue-bright:    #3764be;  /* isotipo sobre oscuro; disco interno */
+
+  /* Marca — azul del logo (2026-11-13; antes azul petróleo #007F9E).
+     OJO: --brand-bright como texto sobre oscuro da ~3.2:1, por debajo de AA
+     para texto chico. Decisión explícita de Bruno, a la vista de una variante
+     más clara (#5b8ae0, 5.3:1). Ver DESIGN.md §2.2. */
+  --brand:               var(--logo-blue-bright); /* superficies, bordes, íconos grandes */
+  --brand-deep:          var(--logo-blue);        /* hover sobre --brand; texto sobre claro */
+  --brand-bright:        var(--logo-blue-bright); /* TEXTO sobre oscuro: nav activo, año|km */
+  --brand-wash:          #ECEFF8;  /* fondo sutil sobre banda clara, chips */
+  --brand-contrast:      #FFFFFF;
 
   /* WhatsApp — color de acción (§2.1: el verde es el color de conversión) */
   --whatsapp:            #128C3E;
@@ -165,7 +167,7 @@
 
      No se puede estilar nada adentro del iframe: es otro origen y el filtro
      cae sobre todos los píxeles por igual. Pero el pin de Google es ROJO, el
-     inverso del rojo es cian, y la marca de Bielcar es petróleo — así que
+     inverso del rojo es cian, y la marca de Bielcar era petróleo (hoy azul) — así que
      sacando el grayscale el marcador caía solo en un cian de la familia de
      `--brand-bright` (~#43FFFF con este brillo). Tentador, y no funcionó: sin
      grayscale TODOS los colores sobreviven a la inversión, y un mapa con el
@@ -177,7 +179,7 @@
 
      Si alguna vez se quiere el pin en el color de marca de verdad, el camino
      es dejar el iframe y pasar a la Static Maps API con
-     `markers=color:0x007F9E` más un `style=` oscuro nativo — eso además
+     `markers=color:0x3764BE` más un `style=` oscuro nativo — eso además
      borraría todo este filtro. Necesita API key de Google con facturación
      habilitada y pierde el pan/zoom.
 

@@ -60,3 +60,10 @@ deformes. Se eligió reconstruir con una fuente.
 - `favicon.png` (512) y `apple-touch-icon.png` (180, disco de 120 sobre `#0D0D0D`) regenerados desde el SVG con sharp, mismo layout que antes.
 - Siguen en petróleo: `og.png`, `theme-color` en Base.astro y el loader del catálogo (multiaviso.css §11).
 - Después, a pedido del usuario: `og.png` regenerado desde `logo-on-dark.svg` (500px de ancho, centrado sobre `#0D0D0D`, mismo layout que el anterior); `theme-color` a `#35468c`; loader del catálogo a tokens nuevos `--logo-blue` / `--logo-blue-bright` (agregados en `tokens.css`). `npm run check` 0 errores, build ok.
+
+## Session 3 (2026-11-13), rebrand del acento
+
+- `tokens.css`: `--brand`/`--brand-bright` -> `var(--logo-blue-bright)` (#3764be), `--brand-deep` -> `var(--logo-blue)` (#35468c), `--brand-wash` -> #ECEFF8. Todo el acento del sitio pasa a azul; verde WhatsApp sin cambios.
+- Contraste: #3764be como texto sobre oscuro da ~3.2-3.5:1, debajo de AA. Bruno lo eligió a la vista de #5b8ae0 (5.3:1, mismo matiz). Anotado en DESIGN.md §2.2 y en tokens.css.
+- DESIGN.md §2 (bloque de tokens, nota de rebrand, tabla de contraste, resumen), PORTFOLIO.md y comentarios que decían petróleo actualizados.
+- `npm run check` 0 errores, build ok, sin hex petróleo en `dist/`. No verificado en browser; el catálogo solo se ve en producción.

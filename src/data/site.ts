@@ -130,8 +130,8 @@ export const multiaviso = {
  *   rehecho con Source Sans 3 (OFL) y convertido a paths, sin dependencia de
  *   fuentes. Si llega el vector oficial, se reemplazan los dos SVG y listo.
  * - Color: el logo es #35468c (claro) / #3764be (oscuro, matiz corrido a 220° para no tirar a violeta, ~3.2:1
- *   sobre --surface-dark-raised). El resto del sitio SIGUE en petróleo
- *   (--brand): divergencia aceptada, anotada en DESIGN.md §2.1.
+ *   sobre --surface-dark-raised). Desde 2026-11-13 todo el acento del sitio
+ *   (--brand*) usa estos mismos azules: DESIGN.md §2.1.
  *
  * `raster` existe solo para el JSON-LD de Base.astro: Google no acepta SVG como
  * logo de Organization. Se regenera desde logo.svg (508x144).

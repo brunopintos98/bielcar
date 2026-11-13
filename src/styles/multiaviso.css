@@ -404,7 +404,7 @@
   color: var(--ma-text-muted);
 }
 
-/* "2025 | 6.300 km" — petróleo, que acá es rol de énfasis, no de acción */
+/* "2025 | 6.300 km" — azul de marca, que acá es rol de énfasis, no de acción */
 .catalog #MultiavisoWrapper #List .item .item-specs,
 .catalog #MultiavisoWrapper #List .item .item-specs a,
 .catalog #MultiavisoWrapper #List .item .item-specs span {
@@ -1966,7 +1966,7 @@
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2015%2028%27%20fill%3D%27none%27%20stroke%3D%27%23FFFFFF%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M4%207l7%207-7%207%27%2F%3E%3C%2Fsvg%3E");
 }
 
-/* Hover al petróleo, el mismo salto que hacen los links del sitio. */
+/* Hover al azul de marca, el mismo salto que hacen los links del sitio. */
 .catalog #MultiavisoWrapper .thumbs-container .swiper-button-prev:hover {
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2015%2028%27%20fill%3D%27none%27%20stroke%3D%27%231F9CBF%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M11%207l-7%207%207%207%27%2F%3E%3C%2Fsvg%3E");
 }
