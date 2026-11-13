@@ -86,7 +86,10 @@ const media = PHOTOS.homeHero;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center;
+    /* Encuadre corrido hacia abajo (65% en vez de 50%) para `salon-1`: muestra
+       menos techo y más autos sin perder del todo las vigas y las luces, que
+       son parte de cómo se ve el salón. Si cambia la foto, revisar este valor. */
+    object-position: center 65%;
     /* Mismo criterio que PhotoHero: la foto se baja de brillo para que el h1 y
        la bajada se lean, en vez de subir el degradado a negro pleno. Un poco
        más suave que en las páginas internas (0.7 contra 0.6) porque acá el

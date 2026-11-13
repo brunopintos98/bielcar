@@ -8,7 +8,7 @@ import { site, SALES_BRANDS, SERVICE_BRANDS, PHOTOS, ABOUT_PARAGRAPHS, list } fr
 /**
  * /nosotros — composición de §7, sin el bloque de equipo de ventas.
  *
- * ─── El hero lleva foto (bielcar-2), es una desviación de §5.2 ────────────
+ * ─── El hero lleva foto (salon-2), es una desviación de §5.2 ────────────
  * §5.2 pide el hero plano ("Usar exactamente este patrón encima de cada
  * página con Multiaviso") — pero /nosotros no tiene contenedor Multiaviso, así
  * que no aplica el motivo del documento (colisión con la ficha de un vehículo
@@ -62,8 +62,8 @@ const serviceBrands = list(SERVICE_BRANDS);
   <section class="sobre band band--dark">
     <div class="container sobre__split">
       <div class="sobre__media" data-reveal="left">
-        {/* El contenedor es 4:3 y el archivo también, así que la foto entra
-            ENTERA — `object-fit: cover` no llega a recortar nada.
+        {/* El contenedor es 3:4 y la foto (`fachada`) también, así que entra
+            ENTERA. Antes era 4:3 y se comía casi la mitad de la altura.
             `sizes`: media pantalla en desktop, ancho completo apilada. */}
         <Image
           src={media.src}
@@ -120,7 +120,12 @@ const serviceBrands = list(SERVICE_BRANDS);
   }
 
   .sobre__media {
-    aspect-ratio: 4 / 3;
+    /* 3:4, el mismo aspecto que la foto del frente: entra ENTERA, sin
+       recorte. A 4:3 perdía el cielo, parte del techo y la vereda. Con el
+       texto de al lado (~160 palabras más título y CTAs) la columna de texto
+       es alta igual, así que la foto vertical acompaña en vez de desbalancear.
+       Si cambia la foto, revisar. */
+    aspect-ratio: 3 / 4;
     overflow: hidden;
     /* Sistema de radio de imágenes (DESIGN.md §4). */
     border-radius: var(--radius-md);
@@ -160,6 +165,15 @@ const serviceBrands = list(SERVICE_BRANDS);
     flex-wrap: wrap;
     gap: var(--space-4);
     margin-top: var(--space-12);
+  }
+
+  /* En desktop la foto baja un poco respecto del centro de la columna de
+     texto (pedido de diseño). Solo en desktop: apiladas no hay nada al lado
+     con qué alinearla y el margen sería espacio muerto. */
+  @media (min-width: 900px) {
+    .sobre__media {
+      margin-top: var(--space-16);
+    }
   }
 
   @media (max-width: 899px) {

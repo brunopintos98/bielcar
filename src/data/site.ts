@@ -10,9 +10,9 @@ import tileUsadosImg from '../assets/home/usados.webp';
 import tileTodosImg from '../assets/home/todos.webp';
 import serviceHeroImg from '../assets/service/hero2.png';
 import contactHeroImg from '../assets/contacto/hero.png';
-import local1 from '../assets/local/bielcar-1.webp';
-import local2 from '../assets/local/bielcar-2.webp';
-import local3 from '../assets/local/bielcar-3.webp';
+import salon1 from '../assets/local/salon-1.jpg';
+import salon2 from '../assets/local/salon-2.jpg';
+import fachada from '../assets/local/fachada.jpg';
 
 /**
  * Fuente única de verdad de los datos del sitio.
@@ -502,40 +502,47 @@ export const PHOTOS: {
   contactHero: Photo;
 } = {
   /**
-   * Fachada de La Paz 2028 con el salón a la vista.
+   * `salon-1`: el salón por dentro, con los letreros de Lynk & Co y JAC sobre
+   * la pared negra, autos en exhibición y la pantalla a la derecha.
    *
-   * Se eligió entre las tres tomas mirando el RECORTE real del hero, que es
-   * casi 2.3:1 sobre una foto 4:3: el auto blanco en la vidriera es lo que
-   * hace que la imagen se lea como automotora de entrada, y el h1 cae sobre la
-   * zona oscura del interior.
+   * Reemplazó a la fachada (`bielcar-1`) cuando llegaron las fotos del
+   * interior. En el recorte del hero (casi 2.3:1 sobre una foto 4:3) quedan
+   * los autos y los letreros, que es lo que hace que se lea como automotora.
    */
-  homeHero: { src: local1, alt: 'Frente de Bielcar Automóviles en La Paz 2028, Montevideo' },
-
-  /**
-   * `bielcar-2`: la entrada del sector de chapa y pintura, con la vidriera
-   * hacia el taller (se ve el cartel "PPG"/"Paint Works" y autos adentro).
-   * Va en el hero de /nosotros (`PhotoHero`, full-bleed, recorte fuerte en
-   * vertical) — misma lógica de recorte que `homeHero` en el hero del Home,
-   * ambas partiendo de un archivo 4:3.
-   *
-   * El `alt` describe solo lo que se ve en la foto: NO afirma qué se hace ahí
-   * más allá de lo legible en la vidriera (regla del proyecto de no inventar
-   * datos — ver la nota de cabecera del archivo).
-   */
-  aboutHero: {
-    src: local2,
-    alt: 'Fachada del sector de chapa y pintura de Bielcar Automóviles, en La Paz 2028, Montevideo',
+  homeHero: {
+    src: salon1,
+    alt: 'Salón de Bielcar Automóviles con autos en exhibición y los letreros de Lynk & Co y JAC',
   },
 
   /**
-   * La fachada completa en ángulo. Va en el split de /nosotros, donde el
-   * contenedor es 4:3 — el mismo aspecto que el archivo, o sea que entra
-   * ENTERA, sin recorte.
+   * `salon-2`: otra toma del salón, más cerrada sobre los autos y el mueble
+   * iluminado del fondo. Va en el hero de /nosotros (`PhotoHero`, full-bleed,
+   * recorte fuerte en vertical), misma lógica de recorte que `homeHero`.
    *
-   * Es una toma distinta a las otras dos a propósito: son las tres únicas
-   * fotos grandes del local en el sitio y repetir la misma se nota.
+   * Es una toma distinta de la del Home a propósito: repetir la misma foto en
+   * dos heroes se nota.
    */
-  aboutLocal: { src: local3, alt: 'Fachada de Bielcar Automóviles en La Paz 2028, Montevideo' },
+  aboutHero: {
+    src: salon2,
+    alt: 'Interior del salón de Bielcar Automóviles con autos en exhibición',
+  },
+
+  /**
+   * `fachada`: el frente actual, con los carteles de JAC Motors, Lynk & Co,
+   * Geely y Bielcar arriba y la vidriera del salón con autos abajo.
+   *
+   * El archivo es vertical (3:4) y el split de /nosotros es 4:3, así que el
+   * recorte centrado se come el cielo y la vereda. Se dejó así a propósito:
+   * los carteles y la vidriera entran completos, que es lo que importa.
+   *
+   * Es la única foto del frente en el sitio: los dos heroes muestran el salón
+   * por dentro. Reemplazó a la fachada vieja (`bielcar-3`, antes de los
+   * carteles nuevos).
+   */
+  aboutLocal: {
+    src: fachada,
+    alt: 'Fachada de Bielcar Automóviles con los carteles de JAC Motors, Lynk & Co y Geely y la vidriera del salón',
+  },
 
   tileNuevos: { src: tileNuevosImg, alt: 'Lynk & Co 02 rojo' },
   tileUsados: { src: tileUsadosImg, alt: 'Honda CR-V blanco en ruta' },
@@ -852,9 +859,8 @@ export const OPEN_DAYS = [
  * Imagen de Open Graph.
  *
  * Generada del logo sobre la superficie oscura de marca, con `sips`, sin
- * dependencias nuevas. NO es una foto: la foto del local sigue pendiente
- * (PHOTOS.homeHero) y una tarjeta con un auto de catálogo diría que ese auto
- * es Bielcar.
+ * dependencias nuevas. NO es una foto de catálogo: una tarjeta con un
+ * auto del listado diría que ese auto es Bielcar.
  *
  * ⚠️  Sale un poco blanda: el archivo de origen mide 254px de ancho y acá se
  * escala ~2x. Es el mismo techo que el logo del header. Cuando llegue el
