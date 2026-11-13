@@ -55,7 +55,7 @@ npm run deploy    # vercel --prod → único entorno donde anda el catálogo
 ## Estructura
 
 ```
-public/img/            logo (2 variantes con alpha), og.png, marcas/, home/, service/
+public/img/            logo.svg + logo-on-dark.svg (+ logo.png para JSON-LD), og.png, marcas/, home/, service/
 src/
 ├── data/site.ts       FUENTE ÚNICA de datos, ROUTES, waLink(), las 2 listas de marcas
 ├── layouts/Base.astro html, head, meta social, JSON-LD, header, footer, FAB
@@ -182,10 +182,11 @@ Sobre el catálogo, dos cosas que conviene saber de entrada porque desvían de
 - [ ] **Dos servicios que el texto de `/nosotros` afirma y el sitio no lista:**
       trámites **con escribanos propios** y **financiación propia o bancaria**. Son
       diferenciales fuertes para una automotora. ¿Se agregan a `SERVICES`?
-- [ ] **Logo en vector.** El PNG ya está integrado (fondo removido, dos variantes con
-      alpha), pero mide 254x72: a 32px de alto en el header da ~2.2x de densidad y no
-      da para más. No bloquea, es techo — y es el mismo techo de `og.png`, que se
-      generó de ese logo.
+- [ ] **Logo en vector OFICIAL.** El sitio ya usa SVG (`logo.svg` / `logo-on-dark.svg`,
+      en azul `#35468c`), pero es una RECONSTRUCCIÓN: engranaje redibujado y wordmark
+      en Source Sans 3, porque no se conoce la tipografía original. Si Sebastián manda
+      el vector, se reemplazan los dos SVG y se regenera `logo.png`. Ojo: `og.png`,
+      el favicon y el apple-touch-icon siguen con el logo petróleo viejo.
 - [ ] **Logos de marcas en SVG** (hoy son PNG de mapa de bits). **Si manda uno nuevo,
       tiene que tener transparencia real:** la franja los pasa a blanco con
       `filter: brightness(0) invert(1)`, que conserva el alfa, así que un PNG con fondo

@@ -117,26 +117,29 @@ export const multiaviso = {
 /**
  * Logo de Bielcar.
  *
- * El archivo que mandó Sebastián es un PNG de 254x72 SIN canal alpha: wordmark
- * negro y engranaje petróleo sobre blanco sólido, o sea inservible tal cual
- * sobre banda oscura. Las dos variantes de acá se derivaron de ese archivo
- * recuperando la cobertura de tinta —`a = (255 - min(r,g,b)) / 255`— en vez de
- * recortar por umbral, así conserva el antialias.
+ * SVG RECONSTRUIDO, no el vector oficial (sigue pedido a Sebastián, README).
+ * Partió del PNG de 254x72 que mandó el cliente: mismo viewBox y misma
+ * composición, medida letra por letra sobre public/img/logo-original.jpg.
  *
- * `onDark` invierte SOLO los neutros: el engranaje queda con su teal original
- * porque no es un disco plano, tiene el dibujo interno en un teal más claro, y
- * aplanarlo a un color único lo convierte en un círculo liso.
+ * - Engranaje: la geometría de public/favicon.svg escalada, en UN solo color
+ *   con fill-rule evenodd. La banda entre el disco y el engranaje y el buje
+ *   central (agujero liso, r1.9 en escala 24) son
+ *   transparentes (pedido de Bruno, 2026-11-13). Ya no es el aro + punto del
+ *   favicon: el ícono del logo y el favicon difieren en el centro.
+ * - Wordmark: no conocemos la tipografía original (parece Myriad). Está
+ *   rehecho con Source Sans 3 (OFL) y convertido a paths, sin dependencia de
+ *   fuentes. Si llega el vector oficial, se reemplazan los dos SVG y listo.
+ * - Color: el logo es #35468c (claro) / #3764be (oscuro, matiz corrido a 220° para no tirar a violeta, ~3.2:1
+ *   sobre --surface-dark-raised). El resto del sitio SIGUE en petróleo
+ *   (--brand): divergencia aceptada, anotada en DESIGN.md §2.1.
  *
- * Dato lindo: el engranaje mide #007E9F, prácticamente idéntico al `--brand`
- * #007F9E que DESIGN.md §2 dedujo del sitio viejo. La paleta queda confirmada
- * contra el archivo de marca, no solo contra un muestreo de pantalla.
- *
- * Sigue siendo un bitmap de 254px de ancho: a 32px de alto da ~2.2x de densidad,
- * suficiente, pero el vector sigue pedido (README).
+ * `raster` existe solo para el JSON-LD de Base.astro: Google no acepta SVG como
+ * logo de Organization. Se regenera desde logo.svg (508x144).
  */
 export const LOGO = {
-  light: '/img/logo.png',
-  onDark: '/img/logo-on-dark.png',
+  light: '/img/logo.svg',
+  onDark: '/img/logo-on-dark.svg',
+  raster: '/img/logo.png',
   width: 254,
   height: 72,
 } as const;
@@ -617,7 +620,7 @@ export const BRAND_LOGOS: Record<string, { src: string; w: number; h: number }> 
   Geely: { src: '/img/marcas/logo-geely.png', w: 292, h: 159 },
   'Lynk & Co': { src: '/img/marcas/logo-linkco.png', w: 338, h: 53 },
   Honda: { src: '/img/marcas/logo-honda.png', w: 360, h: 292 },
-  JAC: { src: '/img/marcas/logo-jac.png', w: 2856, h: 2812 },
+  JAC: { src: '/img/marcas/logo-jac.png', w: 400, h: 80 },
   Mitsubishi: { src: '/img/marcas/logo-mitsubishi.png', w: 360, h: 310 },
   MG: { src: '/img/marcas/logo-mg.png', w: 360, h: 360 },
   Volvo: { src: '/img/marcas/logo-volvo.png', w: 360, h: 53 },
