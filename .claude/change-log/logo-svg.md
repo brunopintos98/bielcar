@@ -53,3 +53,10 @@ deformes. Se eligió reconstruir con una fuente.
 - Buje del engranaje: el aro r1.28 con el punto r0.91 pasa a ser un agujero
   liso de r1.9 (escala 24), totalmente transparente. Ahora el centro difiere
   del favicon y del loader, que siguen con aro y punto.
+
+## Session 2 (2026-11-13), favicon
+
+- `public/favicon.svg`: colores de `#007F9E`/`#1F9CBF` a `#35468c`/`#3764be` (los azules del logo). Geometría sin tocar.
+- `favicon.png` (512) y `apple-touch-icon.png` (180, disco de 120 sobre `#0D0D0D`) regenerados desde el SVG con sharp, mismo layout que antes.
+- Siguen en petróleo: `og.png`, `theme-color` en Base.astro y el loader del catálogo (multiaviso.css §11).
+- Después, a pedido del usuario: `og.png` regenerado desde `logo-on-dark.svg` (500px de ancho, centrado sobre `#0D0D0D`, mismo layout que el anterior); `theme-color` a `#35468c`; loader del catálogo a tokens nuevos `--logo-blue` / `--logo-blue-bright` (agregados en `tokens.css`). `npm run check` 0 errores, build ok.

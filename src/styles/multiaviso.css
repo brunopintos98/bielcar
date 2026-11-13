@@ -97,11 +97,11 @@
      MISMAS en claro y en oscuro a propósito: es un logo, no texto — tiene
      que leerse igual en todos lados, no invertir contraste como el resto de
      estos tokens. Probado contra las dos superficies antes de decidir esto
-     (harness, no se commitea). Valores del usuario (`#007fa3` / `#269cc0`)
-     son casi idénticos a `--brand`/`--brand-bright` — se usan los tokens,
-     no los hex, por mandato de DESIGN.md; la diferencia es imperceptible. */
-  --ma-loader-outer: var(--brand);
-  --ma-loader-inner: var(--brand-bright);
+     (harness, no se commitea). Desde 2026-11-13 usan los azules del logo
+     (`--logo-blue` / `--logo-blue-bright`), igual que el favicon, en vez de
+     `--brand`/`--brand-bright`: el loader ES el isotipo. */
+  --ma-loader-outer: var(--logo-blue);
+  --ma-loader-inner: var(--logo-blue-bright);
 }
 
 .catalog[data-surface='light'] {
@@ -115,8 +115,8 @@
   --ma-link-hover: var(--brand);
   /* Mismos valores que en `[data-surface='dark']` — ver el comentario de
      arriba. No es un copy-paste sin pensar: es la decisión. */
-  --ma-loader-outer: var(--brand);
-  --ma-loader-inner: var(--brand-bright);
+  --ma-loader-outer: var(--logo-blue);
+  --ma-loader-inner: var(--logo-blue-bright);
 }
 
 .catalog {
@@ -2105,11 +2105,10 @@
    Sebastián (pendiente, ver README) se reemplazan los dos juntos, no uno
    primero y el otro después.
 
-   Colores: el usuario midió `#007fa3` (disco exterior/tuerca) y `#269cc0`
-   (disco interno/anillo) sobre el favicon — prácticamente idénticos a
-   `--brand` (#007F9E) y `--brand-bright` (#1F9CBF). Se usan los TOKENS, no
-   los hex literales: DESIGN.md manda sobre esto y la diferencia de un dígito
-   es imperceptible. Mismos dos tokens en `[data-surface='dark']` y
+   Colores: `--logo-blue` (#35468c, disco exterior/tuerca) y
+   `--logo-blue-bright` (#3764be, disco interno/anillo), los mismos que el
+   favicon desde 2026-11-13. Antes eran `--brand`/`--brand-bright` (petróleo).
+   Se usan los TOKENS, no los hex literales, por DESIGN.md. Mismos dos tokens en `[data-surface='dark']` y
    `[data-surface='light']` — es un logo, tiene que leerse igual en todas las
    páginas, no invertir contraste como `--ma-link`. Confirmado en harness
    contra las dos superficies antes de decidir esto, no a priori.

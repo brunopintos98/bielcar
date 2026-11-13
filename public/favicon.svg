@@ -12,8 +12,14 @@
   parecidos, son el mismo dato en dos archivos. Cuando llegue el vector oficial
   de Sebastián (pendiente, ver README) se reemplazan los dos juntos.
 
-  Colores horneados (#007F9E / #1F9CBF = ‑‑brand / ‑‑brand‑bright de
-  tokens.css): un archivo en public/ no puede leer custom properties CSS.
+  Colores horneados: #35468c (disco exterior) / #3764be (disco interno), los
+  dos azules del logo (logo.svg / logo-on-dark.svg). Desde 2026-11-13 el
+  favicon sigue al logo, no a ‑‑brand / ‑‑brand‑bright de tokens.css (que
+  siguen en petróleo, ver DESIGN.md §2.1). Un archivo en public/ no puede
+  leer custom properties CSS, por eso van horneados.
+
+  NOTA: las mediciones de abajo se hicieron con los colores petróleo
+  anteriores; con los azules el contraste entre discos es parecido.
 
   ─── Por qué el engranaje no se lee en una pestaña de 16px (y no es un bug) ──
   Medido downscale LANCZOS desde un render de 512px, delta del canal azul
@@ -39,6 +45,6 @@
   caso, y ese caso ya era igual de blando antes de este cambio.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <circle cx="12" cy="12" r="12" fill="#007F9E"/>
-  <path fill="#1F9CBF" fill-rule="evenodd" d="M 19.840,12.000 A 7.84 7.84 0 1 1 4.160,12.000 A 7.84 7.84 0 1 1 19.840,12.000 Z M 10.372,7.272 L 11.036,5.137 L 12.964,5.137 L 13.628,7.272 A 5.000 5.000 0 0 1 14.192,7.506 L 16.171,6.465 L 17.535,7.829 L 16.494,9.808 A 5.000 5.000 0 0 1 16.728,10.372 L 18.863,11.036 L 18.863,12.964 L 16.728,13.628 A 5.000 5.000 0 0 1 16.494,14.192 L 17.535,16.171 L 16.171,17.535 L 14.192,16.494 A 5.000 5.000 0 0 1 13.628,16.728 L 12.964,18.863 L 11.036,18.863 L 10.372,16.728 A 5.000 5.000 0 0 1 9.808,16.494 L 7.829,17.535 L 6.465,16.171 L 7.506,14.192 A 5.000 5.000 0 0 1 7.272,13.628 L 5.137,12.964 L 5.137,11.036 L 7.272,10.372 A 5.000 5.000 0 0 1 7.506,9.808 L 6.465,7.829 L 7.829,6.465 L 9.808,7.506 A 5.000 5.000 0 0 1 10.372,7.272 Z M 13.280,12.000 A 1.28 1.28 0 1 1 10.720,12.000 A 1.28 1.28 0 1 1 13.280,12.000 Z M 12.910,12.000 A 0.91 0.91 0 1 1 11.090,12.000 A 0.91 0.91 0 1 1 12.910,12.000 Z"/>
+  <circle cx="12" cy="12" r="12" fill="#35468c"/>
+  <path fill="#3764be" fill-rule="evenodd" d="M 19.840,12.000 A 7.84 7.84 0 1 1 4.160,12.000 A 7.84 7.84 0 1 1 19.840,12.000 Z M 10.372,7.272 L 11.036,5.137 L 12.964,5.137 L 13.628,7.272 A 5.000 5.000 0 0 1 14.192,7.506 L 16.171,6.465 L 17.535,7.829 L 16.494,9.808 A 5.000 5.000 0 0 1 16.728,10.372 L 18.863,11.036 L 18.863,12.964 L 16.728,13.628 A 5.000 5.000 0 0 1 16.494,14.192 L 17.535,16.171 L 16.171,17.535 L 14.192,16.494 A 5.000 5.000 0 0 1 13.628,16.728 L 12.964,18.863 L 11.036,18.863 L 10.372,16.728 A 5.000 5.000 0 0 1 9.808,16.494 L 7.829,17.535 L 6.465,16.171 L 7.506,14.192 A 5.000 5.000 0 0 1 7.272,13.628 L 5.137,12.964 L 5.137,11.036 L 7.272,10.372 A 5.000 5.000 0 0 1 7.506,9.808 L 6.465,7.829 L 7.829,6.465 L 9.808,7.506 A 5.000 5.000 0 0 1 10.372,7.272 Z M 13.280,12.000 A 1.28 1.28 0 1 1 10.720,12.000 A 1.28 1.28 0 1 1 13.280,12.000 Z M 12.910,12.000 A 0.91 0.91 0 1 1 11.090,12.000 A 0.91 0.91 0 1 1 12.910,12.000 Z"/>
 </svg>

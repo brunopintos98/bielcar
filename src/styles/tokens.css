@@ -33,6 +33,12 @@
   --brand-wash:          #E8F3F7;  /* fondo sutil sobre banda clara, chips */
   --brand-contrast:      #FFFFFF;
 
+  /* Logo — azul (2026-11-13). Solo el isotipo usa estos: logo.svg, favicon,
+     og.png y el loader del catálogo. El resto del sitio sigue en --brand*
+     (DESIGN.md §2.1). Los SVG/PNG de public/ los llevan horneados. */
+  --logo-blue:           #35468c;  /* isotipo sobre claro; disco exterior */
+  --logo-blue-bright:    #3764be;  /* isotipo sobre oscuro; disco interno */
+
   /* WhatsApp — color de acción (§2.1: el verde es el color de conversión) */
   --whatsapp:            #128C3E;
   --whatsapp-hover:      #0E7433;

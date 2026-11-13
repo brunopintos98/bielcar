@@ -176,10 +176,11 @@ const businessSchema = {
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={imageUrl} />
 
-    {/* --brand (#007F9E), no --surface-dark: DESIGN.md no fija un color
-        para el chrome del navegador (grep verificado, sin resultados), así
-        que no hay conflicto en alinear esto a la marca en vez del fondo. */}
-    <meta name="theme-color" content="#007F9E" />
+    {/* --logo-blue (#35468c), no --surface-dark: DESIGN.md no fija un color
+        para el chrome del navegador, así que se alinea al azul del logo y
+        del favicon (2026-11-13; antes era --brand #007F9E). Hex horneado:
+        un <meta> no lee custom properties. */}
+    <meta name="theme-color" content="#35468c" />
 
     {/* Las fuentes no bloquean el render.
         Un <link rel="stylesheet"> normal a fonts.googleapis.com bloquea el

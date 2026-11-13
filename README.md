@@ -185,8 +185,8 @@ Sobre el catálogo, dos cosas que conviene saber de entrada porque desvían de
 - [ ] **Logo en vector OFICIAL.** El sitio ya usa SVG (`logo.svg` / `logo-on-dark.svg`,
       en azul `#35468c`), pero es una RECONSTRUCCIÓN: engranaje redibujado y wordmark
       en Source Sans 3, porque no se conoce la tipografía original. Si Sebastián manda
-      el vector, se reemplazan los dos SVG y se regenera `logo.png`. Ojo: `og.png`,
-      el favicon y el apple-touch-icon siguen con el logo petróleo viejo.
+      el vector, se reemplazan los dos SVG y se regenera `logo.png`. Ojo: `og.png`, el favicon
+      y el apple-touch-icon se generan desde estos SVG, así que hay que regenerarlos también.
 - [ ] **Logos de marcas en SVG** (hoy son PNG de mapa de bits). **Si manda uno nuevo,
       tiene que tener transparencia real:** la franja los pasa a blanco con
       `filter: brightness(0) invert(1)`, que conserva el alfa, así que un PNG con fondo
