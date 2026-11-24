@@ -11,3 +11,4 @@
 
 - **Hallazgo en prod:** `cleanUrls: true` redirige `/x.html` → `/x` ANTES que nuestros `redirects`, así que `/0km.html`, `/taller.html` y `/quienessomos.html` terminaban en 404. `/contacto.html` andaba solo porque `/contacto` existe.
 - **Fix:** los sources pasan a la forma sin extensión (`/0km`, `/taller`, `/quienessomos`).
+- Mismo efecto con `/site/index`: cleanUrls lo deja en `/site`, así que el source pasa a `/site`.

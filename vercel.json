@@ -16,7 +16,7 @@
     { "source": "/site/taller", "destination": "/service", "permanent": true },
     { "source": "/taller", "destination": "/service", "permanent": true },
     { "source": "/quienessomos", "destination": "/nosotros", "permanent": true },
-    { "source": "/site/index", "destination": "/", "permanent": true },
+    { "source": "/site", "destination": "/", "permanent": true },
     { "source": "/index.php", "destination": "/", "permanent": true }
   ]
 }
