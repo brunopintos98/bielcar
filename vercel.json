@@ -7,15 +7,15 @@
   "trailingSlash": false,
   "redirects": [
     { "source": "/vehiculo/nuevo", "destination": "/nuevos", "permanent": true },
-    { "source": "/0km.html", "destination": "/nuevos", "permanent": true },
+    { "source": "/0km", "destination": "/nuevos", "permanent": true },
     { "source": "/vehiculo/usado", "destination": "/usados", "permanent": true },
     { "source": "/vehiculo/lista-usados", "destination": "/usados", "permanent": true },
     { "source": "/usados.php", "destination": "/usados", "permanent": true },
     { "source": "/site/contacto", "destination": "/contacto", "permanent": true },
     { "source": "/contacto.html", "destination": "/contacto", "permanent": true },
     { "source": "/site/taller", "destination": "/service", "permanent": true },
-    { "source": "/taller.html", "destination": "/service", "permanent": true },
-    { "source": "/quienessomos.html", "destination": "/nosotros", "permanent": true },
+    { "source": "/taller", "destination": "/service", "permanent": true },
+    { "source": "/quienessomos", "destination": "/nosotros", "permanent": true },
     { "source": "/site/index", "destination": "/", "permanent": true },
     { "source": "/index.php", "destination": "/", "permanent": true }
   ]
